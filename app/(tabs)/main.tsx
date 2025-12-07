@@ -1,11 +1,11 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
 import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image } from 'expo-image';
 import { Link } from 'expo-router';
+import { Button, Platform, StyleSheet } from 'react-native';
 
 export default function HomeScreen() {
   return (
@@ -17,6 +17,13 @@ export default function HomeScreen() {
           style={styles.reactLogo}
         />
       }>
+        <Button 
+  title="Clear Storage" 
+  onPress={async () => {
+    await AsyncStorage.removeItem("products_list");
+    console.log("Cleared!");
+  }} 
+/>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Welcome!</ThemedText>
         <HelloWave />
