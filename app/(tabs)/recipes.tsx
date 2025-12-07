@@ -17,7 +17,7 @@ import { loadProducts } from "../storage/productStorage";
 import { GoogleGenAI } from "@google/genai";
 
 
-//const ai = new GoogleGenAI({ apiKey: "AIzaSyAtqX3GO9xQb8V5XBa2Bw--l-twC-orhR0" }); 
+const ai = new GoogleGenAI({ apiKey: "AIzaSyCN9f7parmK-ISho_jR28ahlCKMEmX_Ckc" }); 
 
 
 interface Product {

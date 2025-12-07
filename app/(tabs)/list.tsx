@@ -11,9 +11,21 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Platform,
+  Alert
 } from "react-native";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
 import { loadProducts, saveProducts } from "../storage/productStorage";
+
+
+const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 export default function ProductsListScreen() {
   const [products, setProducts] = useState([]);
@@ -22,15 +34,61 @@ export default function ProductsListScreen() {
   const [editing, setEditing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [isDoneAction, setIsDoneAction] = useState(false); 
 
   const [editQuantity, setEditQuantity] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editExpirationDate, setEditExpirationDate] = useState("");
+  const [editBoughtDate, setEditBoughtDate] = useState("");
+  const [editQuantityType, setEditQuantityType] = useState("");
+  const [editImage, setEditImage] = useState("");
+
+  const [showBoughtDatePicker, setShowBoughtDatePicker] = useState(false);
+  const [showExpirationDatePicker, setShowExpirationDatePicker] = useState(false);
+
+  const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+        if (Platform.OS !== 'web') {
+            const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+            if (libraryStatus !== 'granted') {
+                setPermissionStatus('denied');
+                Alert.alert(
+                    'Permission Required',
+                    'Media Library permission is needed to upload photos.'
+                );
+            } else {
+                setPermissionStatus('granted');
+            }
+        }
+    })();
+  }, []);
+
+  const pickImage = async () => {
+    if (permissionStatus !== 'granted') {
+         Alert.alert('Permission Denied', 'Please grant media library access in your settings.');
+         return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.5, 
+    });
+
+    if (!result.canceled) {
+        setEditImage(result.assets[0].uri);
+    }
+  };
 
   const loadData = async () => {
     const data = await loadProducts();
     setProducts(data);
-    // console.log("Products loaded:", data);
   };
 
   useFocusEffect(
@@ -39,21 +97,26 @@ export default function ProductsListScreen() {
     }, [])
   );
 
-
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
   }, []);
 
-  const openModal = (product, isEditing = false) => {
+  const openModal = (product, isEditing = false, isDone = false) => {
     setSelectedProduct(product);
-    setEditing(isEditing);
-    if (isEditing) {
-      setEditQuantity(product.quantity);
-      setEditNotes(product.notes);
+    setEditing(isEditing || isDone);
+    setIsDoneAction(isDone);
+    
+    if (isEditing || isDone) {
+      setEditQuantity(String(product.quantity));
       setEditCategory(product.category);
+      setEditNotes(product.notes);
+      setEditPrice(String(product.price));
+      setEditExpirationDate(product.expirationDate || '');
+      setEditBoughtDate(product.boughtDate || '');
+      setEditQuantityType(product.quantityType);
+      setEditImage(product.image || '');
     }
     setModalVisible(true);
   };
@@ -61,8 +124,15 @@ export default function ProductsListScreen() {
   const closeModal = () => {
     setSelectedProduct(null);
     setEditing(false);
+    setIsDoneAction(false);
     setEditQuantity("");
+    setEditCategory("");
     setEditNotes("");
+    setEditPrice("");
+    setEditExpirationDate("");
+    setEditBoughtDate("");
+    setEditQuantityType("");
+    setEditImage("");
     setModalVisible(false);
   };
 
@@ -76,7 +146,20 @@ export default function ProductsListScreen() {
   const saveEdit = async () => {
     const updatedProducts = products.map((p) => {
       if (p.id === selectedProduct.id) {
-        return { ...p, quantity: editQuantity, notes: editNotes, category: editCategory};
+        const newInProgress = isDoneAction ? false : p.inProgress;
+        
+        return { 
+          ...p, 
+          quantity: editQuantity, 
+          category: editCategory, 
+          notes: editNotes,
+          price: parseFloat(editPrice) || 0,
+          expirationDate: editExpirationDate,
+          boughtDate: editBoughtDate,
+          quantityType: editQuantityType,
+          image: editImage,
+          inProgress: newInProgress
+        };
       }
       return p;
     });
@@ -84,17 +167,35 @@ export default function ProductsListScreen() {
     await saveProducts(updatedProducts);
     closeModal();
   };
-
-  const markAsBought = async () => {
-    if (!selectedProduct) return;
-    const updatedProducts = products.map((p) =>
-      p.id === selectedProduct.id ? { ...p, toBuy: false } : p
-    );
-    setProducts(updatedProducts);
-    await saveProducts(updatedProducts);
-    closeModal();
+  
+  const markAsDone = (product) => {
+    if (!product.price || !product.expirationDate || !product.quantity || !product.quantityType) {
+        Alert.alert(
+            "Missing Details",
+            "Please ensure Price, Expiration Date, Quantity, and Quantity Type are entered before marking as Done."
+        );
+        return;
+    }
+    openModal(product, false, true);
   };
 
+  const handleBoughtDateChange = (event, selectedDate) => {
+    setShowBoughtDatePicker(false);
+    if (selectedDate) {
+        setEditBoughtDate(formatDate(selectedDate));
+    }
+  };
+
+  const handleExpirationDateChange = (event, selectedDate) => {
+    setShowExpirationDatePicker(false);
+    if (selectedDate) {
+        setEditExpirationDate(formatDate(selectedDate));
+    }
+  };
+
+  const showBoughtPicker = () => setShowBoughtDatePicker(true);
+  const showExpirationPicker = () => setShowExpirationDatePicker(true);
+  
   const getExpirationDays = (expirationDateStr) => {
     try {
       const expDate = new Date(expirationDateStr);
@@ -110,10 +211,10 @@ export default function ProductsListScreen() {
   };
 
   const getExpirationColor = (days) => {
-    if (days < 0) return "#FF6B6B"; // Expired - red
-    if (days === 0) return "#FF6B6B"; // Today - red
-    if (days <= 5) return "#FFD700"; // 1-5 days - yellow
-    return "#4CAF50"; // 6+ days - green
+    if (days < 0) return "#FF6B6B";
+    if (days === 0) return "#FF6B6B";
+    if (days <= 5) return "#FFD700";
+    return "#4CAF50";
   };
 
   const getExpirationText = (days) => {
@@ -130,6 +231,7 @@ export default function ProductsListScreen() {
     return true;
   });
 
+
   return (
     <ScrollView
       contentContainerStyle={styles.container}
@@ -137,38 +239,38 @@ export default function ProductsListScreen() {
     >
       <Text style={styles.header}>Products</Text>
       <ScrollView
-  horizontal
-  showsHorizontalScrollIndicator={false}
-  contentContainerStyle={styles.filterContainer}
->
-  <TouchableOpacity
-    style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
-    onPress={() => setFilter('all')}
-  >
-    <Text style={[styles.filterButtonText, filter === 'all' && styles.filterButtonTextActive]}>All</Text>
-  </TouchableOpacity>
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterContainer}
+      >
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
+          onPress={() => setFilter('all')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'all' && styles.filterButtonTextActive]}>All</Text>
+        </TouchableOpacity>
 
-  <TouchableOpacity
-    style={[styles.filterButton, filter === 'toBuy' && styles.filterButtonActive]}
-    onPress={() => setFilter('toBuy')}
-  >
-    <Text style={[styles.filterButtonText, filter === 'toBuy' && styles.filterButtonTextActive]}>To Buy</Text>
-  </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'toBuy' && styles.filterButtonActive]}
+          onPress={() => setFilter('toBuy')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'toBuy' && styles.filterButtonTextActive]}>To Buy</Text>
+        </TouchableOpacity>
 
-  <TouchableOpacity
-    style={[styles.filterButton, filter === 'expiresSoon' && styles.filterButtonActive]}
-    onPress={() => setFilter('expiresSoon')}
-  >
-    <Text style={[styles.filterButtonText, filter === 'expiresSoon' && styles.filterButtonTextActive]}>Expires Soon</Text>
-  </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'expiresSoon' && styles.filterButtonActive]}
+          onPress={() => setFilter('expiresSoon')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'expiresSoon' && styles.filterButtonTextActive]}>Expires Soon</Text>
+        </TouchableOpacity>
 
-  <TouchableOpacity
-    style={[styles.filterButton, filter === 'inProgress' && styles.filterButtonActive]}
-    onPress={() => setFilter('inProgress')}
-  >
-    <Text style={[styles.filterButtonText, filter === 'inProgress' && styles.filterButtonTextActive]}>In Progress</Text>
-  </TouchableOpacity>
-</ScrollView>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'inProgress' && styles.filterButtonActive]}
+          onPress={() => setFilter('inProgress')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'inProgress' && styles.filterButtonTextActive]}>In Progress</Text>
+        </TouchableOpacity>
+      </ScrollView>
 
 
       {filteredProducts.map((p) => (
@@ -197,7 +299,6 @@ export default function ProductsListScreen() {
               )}
             </View>
 
-            {/* Mark as bought button for toBuy items */}
             {p.toBuy && (
               <TouchableOpacity
                 style={styles.markBoughtBtn}
@@ -213,6 +314,16 @@ export default function ProductsListScreen() {
                 <Text style={styles.markBoughtBtnText}>✓</Text>
               </TouchableOpacity>
             )}
+            
+            {p.inProgress && (
+              <TouchableOpacity
+                style={styles.markDoneBtn}
+                onPress={() => markAsDone(p)}
+              >
+                <Text style={styles.markDoneBtnText}>✓</Text>
+              </TouchableOpacity>
+            )}
+
           </TouchableOpacity>
         </View>
       ))}
@@ -227,35 +338,76 @@ export default function ProductsListScreen() {
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, selectedProduct?.toBuy && styles.modalContentToBuy,selectedProduct?.inProgress && styles.modalContentInProgress]} >
               <KeyboardAwareScrollView>
-                <Text style={styles.modalTitle}>{selectedProduct.name}</Text>
-                {selectedProduct.image && (
-                  <Image
-                    source={{ uri: selectedProduct.image }}
-                    style={styles.productImage}
-                    resizeMode="contain"
-                  />
-                )}
+                <Text style={styles.modalTitle}>
+                  {isDoneAction ? "Finalize Usage" : selectedProduct.name}
+                </Text>
+                
 
 
-
-                {editing ? (
+                {(editing || isDoneAction) ? ( 
                   <>
+                    <Text style={styles.inputLabel}>Name (Read Only):</Text>
+                    <TextInput value={selectedProduct.name} editable={false} style={styles.inputReadOnly} />
 
-                   <Text style={{ marginTop: 10, color: "#fff", fontSize: 14, fontWeight: "600" }}>Category:</Text>
-                    <TextInput
-                      value={editCategory}
-                      onChangeText={setEditCategory}
-                      style={styles.input}
-                    />
+                    <Text style={styles.inputLabel}>Image:</Text>
+                    <View style={styles.imagePickerContainer}>
+                        <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage} disabled={permissionStatus !== 'granted'}>
+                            <Text style={styles.imagePickerButtonText}>
+                                {editImage ? 'Change Image' : 'Pick Image'}
+                            </Text>
+                        </TouchableOpacity>
+                        {editImage ? (
+                            <Image source={{ uri: editImage }} style={styles.imagePreviewSmall} />
+                        ) : (
+                            <Text style={styles.imagePickerPlaceholder}>No image selected</Text>
+                        )}
+                    </View>
 
-                    <Text style={{ marginTop: 12, color: "#fff", fontSize: 14, fontWeight: "600" }}>Quantity:</Text>
-                    <TextInput
-                      value={editQuantity}
-                      onChangeText={setEditQuantity}
-                      keyboardType="numeric"
-                      style={styles.input}
-                    />
-                    <Text style={{ marginTop: 12, color: "#fff", fontSize: 14, fontWeight: "600" }}>Notes:</Text>
+                    <Text style={styles.inputLabel}>Category:</Text>
+                    <TextInput value={editCategory} onChangeText={setEditCategory} style={styles.input} />
+                    
+                    <Text style={styles.inputLabel}>Price:</Text>
+                    <TextInput value={editPrice} onChangeText={setEditPrice} keyboardType="numeric" style={styles.input} />
+
+                    <Text style={styles.inputLabel}>Bought Date:</Text>
+                    <TouchableOpacity onPress={showBoughtPicker} style={styles.datePickerButton}>
+                        <Text style={styles.datePickerText}>
+                            {editBoughtDate || 'Select Date'}
+                        </Text>
+                        <Text style={styles.datePickerIcon}></Text>
+                    </TouchableOpacity>
+                    {showBoughtDatePicker && (
+                        <DateTimePicker
+                            value={editBoughtDate ? new Date(editBoughtDate) : new Date()}
+                            mode="date"
+                            display="default"
+                            onChange={handleBoughtDateChange}
+                        />
+                    )}
+
+                    <Text style={styles.inputLabel}>Expiration Date:</Text>
+                    <TouchableOpacity onPress={showExpirationPicker} style={styles.datePickerButton}>
+                        <Text style={styles.datePickerText}>
+                            {editExpirationDate || 'Select Date'}
+                        </Text>
+                         <Text style={styles.datePickerIcon}></Text>
+                    </TouchableOpacity>
+                    {showExpirationDatePicker && (
+                        <DateTimePicker
+                            value={editExpirationDate ? new Date(editExpirationDate) : new Date()}
+                            mode="date"
+                            display="default"
+                            onChange={handleExpirationDateChange}
+                        />
+                    )}
+
+                    <Text style={styles.inputLabel}>Quantity:</Text>
+                    <TextInput value={editQuantity} onChangeText={setEditQuantity} keyboardType="numeric" style={styles.input} />
+
+                    <Text style={styles.inputLabel}>Quantity Type:</Text>
+                    <TextInput value={editQuantityType} onChangeText={setEditQuantityType} style={styles.input} />
+
+                    <Text style={styles.inputLabel}>Notes:</Text>
                     <TextInput
                       value={editNotes}
                       onChangeText={setEditNotes}
@@ -306,15 +458,19 @@ export default function ProductsListScreen() {
                 )}
 
                 <View style={styles.modalButtons}>
-                  {!editing && (
+                  {editing && !isDoneAction && (
+                    <Button title="Save Edit" onPress={saveEdit} color="#4CAF50" />
+                  )}
+                  {isDoneAction && (
+                    <Button title="Mark as Done" onPress={saveEdit} color="#00BCD4" /> 
+                  )}
+                  {!editing && !isDoneAction && (
                     <Button
                       title="Edit"
                       onPress={() => openModal(selectedProduct, true)}
                     />
                   )}
-                  {editing && (
-                    <Button title="Save" onPress={saveEdit} color="#4CAF50" />
-                  )}
+                  
                   <Button
                     title="Delete"
                     color="#F44336"
@@ -341,8 +497,13 @@ const styles = StyleSheet.create({
   cardContent: { flex: 1 },
   cardTitle: { fontSize: 17, fontWeight: "700", marginBottom: 4, color: "#f1f1f1ee" },
   cardSubtitle: { fontSize: 13, color: "#888", marginBottom: 2 },
+  
   markBoughtBtn: { width: 50, height: 50, borderRadius: 25, backgroundColor: "#4CAF50", justifyContent: "center", alignItems: "center", marginLeft: 8 },
   markBoughtBtnText: { fontSize: 24, color: "#fff", fontWeight: "bold" },
+
+  markDoneBtn: { width: 50, height: 50, borderRadius: 25, backgroundColor: "#ffd103ff", justifyContent: "center", alignItems: "center", marginLeft: 8 },
+  markDoneBtnText: { fontSize: 24, color: "#000000d8", fontWeight: "bold"  },
+  
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center" },
   modalContent: { width: "90%", maxHeight: "85%", backgroundColor: "#1a1a1a", borderRadius: 18, padding: 24, elevation: 15, borderTopWidth: 3, borderTopColor: "#4CAF50" },
   modalContentToBuy: { borderTopColor: "#00BCD4" },
@@ -350,6 +511,8 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 24, fontWeight: "800", marginBottom: 18, color: "#f1f1f1ee" },
   productImage: { width: "100%", height: 180, marginBottom: 18, borderRadius: 12, backgroundColor: "#2a2a2a" },
   modalButtons: { marginTop: 24, flexDirection: "row", justifyContent: "space-between", gap: 8 },
+  
+  inputLabel: { marginTop: 12, color: "#fff", fontSize: 14, fontWeight: "600" },
   input: {
     borderWidth: 1.5,
     borderColor: "#333",
@@ -360,6 +523,64 @@ const styles = StyleSheet.create({
     color: "#f1f1f1ee",
     fontSize: 15,
   },
+  inputReadOnly: {
+    borderWidth: 1.5,
+    borderColor: "#555",
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+    backgroundColor: "#222",
+    color: "#aaa",
+    fontSize: 15,
+  },
+  
+  datePickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+    backgroundColor: "#0a0a0a",
+  },
+  datePickerText: {
+    color: "#f1f1f1ee",
+    fontSize: 15,
+  },
+  datePickerIcon: {
+      fontSize: 18,
+      color: '#4CAF50',
+  },
+  
+  imagePickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 10,
+    gap: 10,
+  },
+  imagePickerButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: '#3498db',
+    borderRadius: 8,
+  },
+  imagePickerButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  imagePreviewSmall: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#333',
+  },
+  imagePickerPlaceholder: {
+    color: '#888',
+    fontSize: 14,
+  },
+
   infoSection: { marginVertical: 16, gap: 2 },
   infoRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, paddingHorizontal: 12, backgroundColor: "#0a0a0a", borderRadius: 10, marginBottom: 6 },
   expirationRow: { backgroundColor: "rgba(255, 107, 107, 0.1)", borderWidth: 1, borderColor: "rgba(255, 107, 107, 0.3)" },
