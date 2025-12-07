@@ -98,7 +98,7 @@ function MonthlyConsumptionTracker({ monthlyConsumption }) {
 
     return (
         <View style={styles.chartContainer}>
-            <Text style={styles.chartTitle}>Monthly Purchase Rate</Text>
+            <Text style={styles.chartTitle}>Monthly Purchase Rate 📈</Text>
             <View style={styles.consumptionStats}>
                 <View style={styles.consumptionItem}>
                     <Text style={styles.consumptionValue}>{thisMonth}</Text>
@@ -309,9 +309,9 @@ export default function DashboardScreen() {
 
       <View style={styles.statsContainer}>
         <StatCard title="Total Foods" value={stats.total} icon="fast-food" color="#4CAF50" />
-        <StatCard title="To Buy" value={stats.toBuy} icon="cart" color="#FF6B6B"  />
-        <StatCard title="Expires Soon" value={stats.expiresSoon} icon="time" color="#FFD700" />
-        <StatCard title="In Progress" value={stats.inProgress} icon="bicycle" color="#00BCD4" />
+        <StatCard title="To Buy" value={stats.toBuy} icon="cart" color="#00BCD4"  />
+        <StatCard title="Expires Soon" value={stats.expiresSoon} icon="time" color="#FF6B6B" />
+        <StatCard title="In Progress" value={stats.inProgress} icon="bicycle" color="#FFD700" />
       </View>
       
       {/* NEW: Monthly Spending Tracker is placed first for financial overview */}
@@ -326,9 +326,9 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+  container: { flex: 1, backgroundColor: '#000000ff' },
   headerContainer: { padding: 15, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff' },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: '#fff' },
   headerSubtitle: { fontSize: 16, color: '#ddd', marginTop: 6 },
   
   statsContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', marginTop: 20 },
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
   consumptionValue: {
       fontSize: 32,
       fontWeight: '800',
-      color: '#4CAF50', // Default color, overridden in spending tracker
+      color: '#4CAF50', 
   },
   consumptionLabel: {
       fontSize: 13,

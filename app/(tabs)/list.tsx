@@ -333,9 +333,9 @@ export default function ProductsListScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 15, backgroundColor: "#000000ff", paddingBottom: 30 },
-  header: { textAlign: "left", fontSize: 28, fontWeight: "800", marginBottom: 20, color: "#f1f1f1ee", letterSpacing: 0.5 },
+  header: { textAlign: "left", fontSize: 26, fontWeight: "800", marginBottom: 20, color: "#f1f1f1ee", letterSpacing: 0.5 },
   card: { flexDirection: "row", width: "100%", backgroundColor: "#1a1a1a", borderRadius: 14, padding: 12, alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5, borderLeftWidth: 4, borderLeftColor: "#4CAF50" },
-  cardToBuy: { borderLeftColor: "#f25921ff" },
+  cardToBuy: { borderLeftColor: "#00BCD4" },
   cardInProgress: { borderLeftColor: "#ffd103ff" },
   cardImage: { width: 80, height: 80, borderRadius: 12, marginRight: 12, backgroundColor: "#2a2a2a" },
   cardContent: { flex: 1 },
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
   markBoughtBtnText: { fontSize: 24, color: "#fff", fontWeight: "bold" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center" },
   modalContent: { width: "90%", maxHeight: "85%", backgroundColor: "#1a1a1a", borderRadius: 18, padding: 24, elevation: 15, borderTopWidth: 3, borderTopColor: "#4CAF50" },
-  modalContentToBuy: { borderTopColor: "#f25921ff" },
+  modalContentToBuy: { borderTopColor: "#00BCD4" },
   modalContentInProgress: { borderTopColor: "#ffd103ff" },
   modalTitle: { fontSize: 24, fontWeight: "800", marginBottom: 18, color: "#f1f1f1ee" },
   productImage: { width: "100%", height: 180, marginBottom: 18, borderRadius: 12, backgroundColor: "#2a2a2a" },

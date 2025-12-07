@@ -289,8 +289,8 @@ export default function ProductsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { textAlign: "left", fontSize: 28, fontWeight: "800", marginBottom: 20, color: "#f1f1f1ee", letterSpacing: 0.5 },
-  container: { padding: 15, backgroundColor: "#030202ff" },
+  header: { textAlign: "left", fontSize: 26, fontWeight: "800", marginBottom: 20, color: "#f1f1f1ee", letterSpacing: 0.5 },
+  container: { padding: 15, backgroundColor: "#000000ff" },
   inputGroup: { marginBottom: 15 },
   label: { fontWeight: "600", marginBottom: 5, color: "#f1f1f1ee" },
   input: {

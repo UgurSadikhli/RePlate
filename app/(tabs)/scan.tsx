@@ -1,31 +1,282 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
 
-interface Food {
-    id: string;
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import { GoogleGenAI } from "@google/genai";
+
+const ai = new GoogleGenAI({
+    apiKey: "AIzaSyAtqX3GO9xQb8V5XBa2Bw--l-twC-orhR0"
+});
+
+const STORAGE_KEY = "products_list";
+
+async function saveProducts(products) {
+    console.log("Saving products:", products);
+    try {
+        const normalized = products.map(item => ({
+            id: Date.now(),
+            name: item.name,
+            quantity: item.quantity_estimate,
+            inProgress: true
+        }));
+        const existing = await AsyncStorage.getItem(STORAGE_KEY);
+        const arr = existing ? JSON.parse(existing) : [];
+
+        const updated = [...arr, ...normalized];
+
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+    } catch (error) {
+        console.error("Saving error:", error);
+    }
+}
+
+
+interface IdentifiedFoodItem {
     name: string;
-    description: string;
-    price: number;
-    image: string;
+    quantity_estimate: string;
+    confidence_score: number;
 }
 
 export default function FoodPage() {
+    const [imageUri, setImageUri] = useState<string | null>(null);
+    const [base64Image, setBase64Image] = useState<string | null>(null);
+    const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
+    const [isScanning, setIsScanning] = useState(false);
+    const [identifiedItems, setIdentifiedItems] = useState<IdentifiedFoodItem[]>([]);
+
+    const manipulateImage = async (uri: string) => {
+        const manipResult = await ImageManipulator.manipulateAsync(
+            uri,
+            [{ resize: { width: 800 } }],
+            { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+        );
+
+        if (!manipResult.base64) {
+            throw new Error("manipulateAsync did not return base64.");
+        }
+
+        return { uri: manipResult.uri, base64: manipResult.base64 };
+    };
+
+    useEffect(() => {
+        (async () => {
+            if (Platform.OS !== 'web') {
+                const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                const { status: libStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+                if (status !== 'granted' || libStatus !== 'granted') {
+                    setPermissionStatus('denied');
+                    Alert.alert("Permission needed");
+                } else {
+                    setPermissionStatus('granted');
+                }
+            }
+        })();
+    }, []);
+
+    const pickImage = async () => {
+        if (permissionStatus !== 'granted') return;
+
+        setIdentifiedItems([]);
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            allowsEditing: true,
+            quality: 1
+        });
+
+        if (!result.canceled) {
+            const originalUri = result.assets[0].uri;
+            const { uri, base64 } = await manipulateImage(originalUri);
+            setImageUri(uri);
+            setBase64Image(base64);
+        }
+    };
+
+    const takePhoto = async () => {
+        if (permissionStatus !== 'granted') return;
+
+        setIdentifiedItems([]);
+
+        const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            quality: 1
+        });
+
+        if (!result.canceled) {
+            const originalUri = result.assets[0].uri;
+            const { uri, base64 } = await manipulateImage(originalUri);
+            setImageUri(uri);
+            setBase64Image(base64);
+        }
+    };
+
+    const scanImage = async () => {
+        if (!base64Image) return;
+
+        setIsScanning(true);
+        setIdentifiedItems([]);
+
+        try {
+            const response = await ai.models.generateContent({
+                model: "gemini-2.5-flash",
+                contents: [
+                    { text: "Analyze image and return ONLY JSON [{name, quantity_estimate, confidence_score}]" },
+                    {
+                        inlineData: {
+                            data: base64Image,
+                            mimeType: "image/jpeg",
+                        },
+                    },
+                ],
+                config: { responseMimeType: "application/json" }
+            });
+
+            const items: IdentifiedFoodItem[] = JSON.parse(response.text.trim());
+            setIdentifiedItems(items);
+
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsScanning(false);
+        }
+    };
+
+    const addToList = async () => {
+        await saveProducts(identifiedItems);
+        Alert.alert("Saved!", "Items added to your list.");
+    };
+
+    const resetImage = () => {
+        setImageUri(null);
+        setBase64Image(null);
+        setIdentifiedItems([]);
+    };
+
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Scan</Text>
-            
+            <Text style={styles.title}>Scan Food Item</Text>
+
+            <View style={styles.cameraFrame}>
+                {imageUri ? (
+                    <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+                ) : (
+                    <View style={styles.cameraPlaceholder}>
+                        <Text style={{ fontSize: 40, color: "#aaa" }}>📸</Text>
+                        <Text style={styles.placeholderText}>No Image Selected</Text>
+                    </View>
+                )}
+            </View>
+
+            {identifiedItems.length > 0 && (
+                <View style={styles.resultsContainer}>
+                    <Text style={styles.resultsTitle}>Identified Items</Text>
+
+                    <ScrollView style={{ maxHeight: 200 }}>
+                        {identifiedItems.map((item, index) => (
+                            <View key={index} style={styles.itemRow}>
+                                <Text style={styles.itemName}>{item.name}</Text>
+                                <Text style={styles.itemDetail}>
+                                    {item.quantity_estimate} ({(item.confidence_score * 100).toFixed(0)}%)
+                                </Text>
+                            </View>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
+
+            {/* BUTTONS SECTION */}
+            <View style={styles.buttonContainer}>
+                {/* If scanned => show Retake / Rethink / Add */}
+                {identifiedItems.length > 0 ? (
+                    <>
+                        <TouchableOpacity style={[styles.button, styles.galleryButton]} onPress={resetImage}>
+                            <Text style={styles.buttonText}>Retake</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={[styles.button, styles.cameraButton]} onPress={scanImage}>
+                            <Text style={styles.buttonText}>Rescan</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={[styles.button, styles.scanButton]} onPress={addToList}>
+                            <Text style={styles.buttonText}>Add to List</Text>
+                        </TouchableOpacity>
+                    </>
+                ) : (
+                    <>
+                        <TouchableOpacity style={[styles.button, styles.cameraButton]} onPress={takePhoto}>
+                            <Text style={styles.buttonText}>Take Photo</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={[styles.button, styles.galleryButton]} onPress={pickImage}>
+                            <Text style={styles.buttonText}>Upload</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.button, styles.scanButton]}
+                            onPress={scanImage}
+                            disabled={!base64Image}
+                        >
+                            <Text style={styles.buttonText}>
+                                {isScanning ? "Scanning..." : "Scan"}
+                            </Text>
+                        </TouchableOpacity>
+                    </>
+                )}
+            </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 16, backgroundColor: '#fff' },
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
-    foodItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
-    foodName: { fontSize: 18, fontWeight: '600' },
-    foodDesc: { fontSize: 14, color: '#666', marginTop: 4 },
-    foodPrice: { fontSize: 16, fontWeight: 'bold', color: '#2ecc71', marginTop: 8 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    error: { flex: 1, color: 'red', textAlign: 'center', marginTop: 20 },
+    container: { flex: 1, padding: 16, backgroundColor: "#121212" },
+    title: { color: "white", fontSize: 24, marginBottom: 20 },
+    cameraFrame: {
+        height: 300,
+        backgroundColor: "#333",
+        borderRadius: 15,
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 20
+    },
+    cameraPlaceholder: { alignItems: "center" },
+    placeholderText: { color: "#aaa", marginTop: 8 },
+    imagePreview: { width: "100%", height: "100%" },
+    buttonContainer: { flexDirection: "row", justifyContent: "space-between" },
+    button: {
+        flex: 1,
+        padding: 12,
+        borderRadius: 10,
+        marginHorizontal: 4,
+        alignItems: "center"
+    },
+    cameraButton: { backgroundColor: "#4CAF50" },
+    galleryButton: { backgroundColor: "#2196F3" },
+    scanButton: { backgroundColor: "#FF9800" },
+    buttonText: { color: "white", fontWeight: "bold" },
+    resultsContainer: { backgroundColor: "#1E1E1E", padding: 15, borderRadius: 10 },
+    resultsTitle: { color: "#4CAF50", fontSize: 18, marginBottom: 10 },
+    itemRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        paddingVertical: 6,
+        borderBottomWidth: 1,
+        borderBottomColor: "#333"
+    },
+    itemName: { color: "white", fontSize: 16 },
+    itemDetail: { color: "#ccc", fontSize: 14 }
 });
