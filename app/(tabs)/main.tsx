@@ -1,105 +1,119 @@
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { useEffect, useState,useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
-import { Link } from 'expo-router';
-import { Button, Platform, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from "@react-navigation/native";
 
-export default function HomeScreen() {
+export default function DashboardScreen() {
+  const [products, setProducts] = useState([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    toBuy: 0,
+    expiresSoon: 0,
+    inProgress: 0,
+  });
+
+  const animatedValue = new Animated.Value(0);
+
+  useEffect(() => {
+    loadData();
+    animateHeader();
+  }, []);
+
+  useFocusEffect(
+      useCallback(() => {
+        loadData();
+      }, [])
+    );
+  
+  
+  const loadData = async () => {
+    const data = await AsyncStorage.getItem('products_list');
+    const list = data ? JSON.parse(data) : [];
+    setProducts(list);
+    calculateStats(list);
+  };
+
+  const calculateStats = (list) => {
+    const total = list.length;
+    const toBuy = list.filter(p => p.toBuy).length;
+    const inProgress = list.filter(p => p.inProgress).length;
+    const expiresSoon = list.filter(p => {
+      if (!p.expirationDate) return false;
+      const days = getExpirationDays(p.expirationDate);
+      return days >= 0 && days <= 5 && !p.toBuy;
+    }).length;
+
+    setStats({ total, toBuy, expiresSoon, inProgress });
+  };
+
+  const getExpirationDays = (expirationDateStr) => {
+    const expDate = new Date(expirationDateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    expDate.setHours(0, 0, 0, 0);
+    const diffTime = expDate - today;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const animateHeader = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(animatedValue, { toValue: 1, duration: 1500, useNativeDriver: false }),
+        Animated.timing(animatedValue, { toValue: 0, duration: 1500, useNativeDriver: false }),
+      ])
+    ).start();
+  };
+
+  const headerColor = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#000', '#4CAF50']
+  });
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-        <Button 
-  title="Clear Storage" 
-  onPress={async () => {
-    await AsyncStorage.removeItem("products_list");
-    console.log("Cleared!");
-  }} 
-/>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 50 }}>
+      {/* Animated Header */}
+      <Animated.View style={[styles.headerContainer, { backgroundColor: headerColor }]}>
+        <Text style={styles.headerTitle}>Food Dashboard</Text>
+        <Text style={styles.headerSubtitle}>Manage your products efficiently</Text>
+      </Animated.View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {/* Stats Cards */}
+      <View style={styles.statsContainer}>
+        <StatCard title="Total Foods" value={stats.total} icon="fast-food" color="#4CAF50" />
+        <StatCard title="To Buy" value={stats.toBuy} icon="cart" color="#FF6B6B"  />
+        <StatCard title="Expires Soon" value={stats.expiresSoon} icon="time" color="#FFD700" />
+        <StatCard title="In Progress" value={stats.inProgress} icon="bicycle" color="#00BCD4" />
+      </View>
+    </ScrollView>
+  );
+}
+
+function StatCard({ title, value, icon, color }) {
+  return (
+    <View style={[styles.statCard, { borderLeftColor: color }]}>
+      <Ionicons name={icon} size={28} color={color} />
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statTitle}>{title}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  container: { flex: 1, backgroundColor: '#000' },
+  headerContainer: { padding: 15, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff' },
+  headerSubtitle: { fontSize: 16, color: '#ddd', marginTop: 6 },
+  statsContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', marginTop: 20 },
+  statCard: { width: '45%', backgroundColor: '#1a1a1a', padding: 16, marginBottom: 12, borderRadius: 12, borderLeftWidth: 5, alignItems: 'center' },
+  statValue: { fontSize: 24, fontWeight: '700', color: '#fff', marginTop: 8 },
+  statTitle: { fontSize: 14, color: '#888', marginTop: 4 },
+  cardsSection: { marginTop: 20, paddingHorizontal: 12 },
+  productCard: { flexDirection: 'row', backgroundColor: '#1a1a1a', borderRadius: 14, marginBottom: 12, padding: 12, alignItems: 'center', shadowColor: '#4CAF50', shadowOpacity: 0.3, shadowRadius: 8 },
+  productImage: { width: 60, height: 60, borderRadius: 12, backgroundColor: '#333' },
+  productName: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  productCategory: { fontSize: 12, color: '#888', marginTop: 2 },
+  productQuantity: { fontSize: 13, color: '#fff', marginTop: 2 },
+  expirationText: { fontSize: 12, color: '#FFD700', marginTop: 4 },
 });

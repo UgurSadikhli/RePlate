@@ -126,13 +126,12 @@ export default function ProductsScreen() {
   return (
     <KeyboardAwareScrollView
       style={{ flex: 1 }}
-      contentContainerStyle={styles.container}
       extraHeight={110}
       enableOnAndroid={true}
     >
    
       <ScrollView contentContainerStyle={styles.container}>
-           <Text style={styles.header}>Add product</Text>
+           <Text style={styles.header}>New product</Text>
         {/* Name */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Name *</Text>
@@ -290,7 +289,7 @@ export default function ProductsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { textAlign: "center", fontSize: 31, fontWeight: "800", marginBottom: 20, color: "#f1f1f1ee", letterSpacing: 0.5 },
+  header: { textAlign: "left", fontSize: 28, fontWeight: "800", marginBottom: 20, color: "#f1f1f1ee", letterSpacing: 0.5 },
   container: { padding: 15, backgroundColor: "#030202ff" },
   inputGroup: { marginBottom: 15 },
   label: { fontWeight: "600", marginBottom: 5, color: "#f1f1f1ee" },

@@ -333,7 +333,7 @@ export default function ProductsListScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 15, backgroundColor: "#000000ff", paddingBottom: 30 },
-  header: { textAlign: "center", fontSize: 32, fontWeight: "800", marginBottom: 20, color: "#f1f1f1ee", letterSpacing: 0.5 },
+  header: { textAlign: "left", fontSize: 28, fontWeight: "800", marginBottom: 20, color: "#f1f1f1ee", letterSpacing: 0.5 },
   card: { flexDirection: "row", width: "100%", backgroundColor: "#1a1a1a", borderRadius: 14, padding: 12, alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5, borderLeftWidth: 4, borderLeftColor: "#4CAF50" },
   cardToBuy: { borderLeftColor: "#f25921ff" },
   cardInProgress: { borderLeftColor: "#ffd103ff" },
