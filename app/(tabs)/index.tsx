@@ -4,7 +4,8 @@ import { Button } from '@react-navigation/elements';
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useEffect, useState } from 'react';
 import { Animated, ScrollView, StyleSheet, Text, View,TouchableOpacity,Image } from 'react-native';
-
+import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { router, useRootNavigationState } from 'expo-router';
 const getExpirationDays = (expirationDateStr) => {
     const expDate = new Date(expirationDateStr);
     const today = new Date();
@@ -293,7 +294,7 @@ const currentYear = new Date().getFullYear();
       ])
     ).start();
   };
-
+const navigation = useNavigation();
   const headerColor = animatedValue.interpolate({
     inputRange: [0, 1],
     outputRange: ['#000', '#4CAF50']
@@ -337,27 +338,27 @@ const currentYear = new Date().getFullYear();
       </View>
 
       <View style={styles.linkColumn}>
-        <Text style={styles.columnTitle}>Company</Text>
-        <TouchableOpacity>
+        {/* <Text style={styles.columnTitle}>Company</Text> */}
+        <TouchableOpacity onPress={() => router.push('/pages/aboutus')}>
           <Text style={styles.linkText}>About Us</Text>
         </TouchableOpacity>
-        <TouchableOpacity>
+        <TouchableOpacity  onPress={() => router.push('/pages/privacy')}>
           <Text style={styles.linkText}>Privacy</Text>
         </TouchableOpacity>
-        <TouchableOpacity>
+        <TouchableOpacity  onPress={() => router.push('/pages/termsofservice')}>
           <Text style={styles.linkText}>Terms of Service</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.linkColumn}>
-        <Text style={styles.columnTitle}>Support</Text>
-        <TouchableOpacity>
+        {/* <Text style={styles.columnTitle}>Support</Text> */}
+        <TouchableOpacity  onPress={() => router.push('/pages/howtouse')}>
           <Text style={styles.linkText}>How to Use</Text>
-        </TouchableOpacity>
-        <TouchableOpacity>
+        </TouchableOpacity >
+        <TouchableOpacity onPress={() => router.push('/pages/settings')}>
           <Text style={styles.linkText}>Settings</Text>
         </TouchableOpacity>
-        <TouchableOpacity>
+        <TouchableOpacity  onPress={() => router.push('/pages/contactus')}>
           <Text style={styles.linkText}>Contact Us</Text>
         </TouchableOpacity>
       </View>
@@ -477,18 +478,19 @@ const styles = StyleSheet.create({
 
   footerContainer: {
     backgroundColor: "#181818ee", 
-    paddingVertical: 30,
+    paddingVertical: 25,
     paddingHorizontal: 20,
     borderTopWidth: 1, 
     borderTopColor: "#333333",
     marginTop: 70,
+    gap: 20,
   },
 
   contentRow: {
     flexDirection: "row",
     justifyContent: "space-around", 
     alignItems: 'flex-start', 
-    marginBottom: 20,
+    marginBottom: 10,
   },
 
   logoSection: {
@@ -510,7 +512,7 @@ const styles = StyleSheet.create({
 
 
   linkColumn: {
-    width: '25%', 
+    width: '22%', 
     alignItems: 'flex-start',
   },
 
