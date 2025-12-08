@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Animated } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Button } from '@react-navigation/elements';
 import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useEffect, useState } from 'react';
+import { Animated, ScrollView, StyleSheet, Text, View,TouchableOpacity,Image } from 'react-native';
 
 const getExpirationDays = (expirationDateStr) => {
     const expDate = new Date(expirationDateStr);
@@ -196,7 +197,7 @@ export default function DashboardScreen() {
     expiresSoon: 0,
     inProgress: 0,
   });
-
+const currentYear = new Date().getFullYear();
   const animatedValue = new Animated.Value(0);
 
   useEffect(() => {
@@ -215,7 +216,6 @@ export default function DashboardScreen() {
     const data = await AsyncStorage.getItem('products_list');
     const list = data ? JSON.parse(data) : [];
     
-    // DEMO DATA SETUP: Ensure products have a price and boughtDate for tracking
     const demoList = list.map((p, index) => ({
       ...p,
       price: p.price ||0, // Assign a dummy price
@@ -224,7 +224,6 @@ export default function DashboardScreen() {
     
     const now = new Date();
     
-    // --- 1. Calculate Monthly Purchase Count ---
     const thisMonthProducts = demoList.filter(p => {
         if (!p.boughtDate) return false;
         if (p.inProgress) return false;
@@ -314,13 +313,62 @@ export default function DashboardScreen() {
         <StatCard title="In Progress" value={stats.inProgress} icon="bicycle" color="#FFD700" />
       </View>
       
-      {/* NEW: Monthly Spending Tracker is placed first for financial overview */}
       <MonthlySpendingTracker monthlySpending={monthlySpending} /> 
 
       <MonthlyConsumptionTracker monthlyConsumption={monthlyConsumption} />
 
       <ExpirationTimelineChart products={products} getExpirationDays={getExpirationDays} />
+
+        <View style={styles.footerContainer}>
     
+    <View style={styles.contentRow}>
+      
+      <View style={styles.logoSection}>
+        <Image
+          source={require("../../assets/images/footerLogo.png")}   
+          style={styles.logo}
+        />
+        <Text style={styles.copyrightText}>
+          © {currentYear} RePlate.
+        </Text>
+        <Text style={styles.copyrightText}>
+          All Rights Reserved.
+        </Text>
+      </View>
+
+      <View style={styles.linkColumn}>
+        <Text style={styles.columnTitle}>Company</Text>
+        <TouchableOpacity>
+          <Text style={styles.linkText}>About Us</Text>
+        </TouchableOpacity>
+        <TouchableOpacity>
+          <Text style={styles.linkText}>Privacy</Text>
+        </TouchableOpacity>
+        <TouchableOpacity>
+          <Text style={styles.linkText}>Terms of Service</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.linkColumn}>
+        <Text style={styles.columnTitle}>Support</Text>
+        <TouchableOpacity>
+          <Text style={styles.linkText}>How to Use</Text>
+        </TouchableOpacity>
+        <TouchableOpacity>
+          <Text style={styles.linkText}>Settings</Text>
+        </TouchableOpacity>
+        <TouchableOpacity>
+          <Text style={styles.linkText}>Contact Us</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+
+    <View style={styles.separator} />
+    
+  </View>
+      
+     
+     
     </ScrollView>
   );
 }
@@ -422,4 +470,67 @@ const styles = StyleSheet.create({
       fontWeight: '600', 
       color: '#fff' 
   },
+  settings_button: {
+      marginTop: 20,
+      marginHorizontal: 100,
+  },
+
+  footerContainer: {
+    backgroundColor: "#181818ee", 
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    borderTopWidth: 1, 
+    borderTopColor: "#333333",
+    marginTop: 70,
+  },
+
+  contentRow: {
+    flexDirection: "row",
+    justifyContent: "space-around", 
+    alignItems: 'flex-start', 
+    marginBottom: 20,
+  },
+
+  logoSection: {
+    width: '38%', 
+    alignItems: 'flex-start',
+  },
+
+  logo: {
+    width: 130, 
+    height: 30, 
+    resizeMode: "center",
+    marginBottom: 20, 
+  },
+
+  copyrightText: {
+    color: "#AAAAAA", 
+    fontSize: 12,
+  },
+
+
+  linkColumn: {
+    width: '25%', 
+    alignItems: 'flex-start',
+  },
+
+  columnTitle: {
+    color: "#FFFFFF", 
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+
+  linkText: {
+    color: "#4CAF50", 
+    fontSize: 14,
+    paddingVertical: 4,
+  },
+
+  separator: {
+    height: 2,
+    width: "100%",
+    backgroundColor: "#4CAF50",
+    marginTop: 10,
+  }
 });
