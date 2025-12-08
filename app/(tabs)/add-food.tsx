@@ -75,7 +75,7 @@ export default function ProductsScreen() {
   };
 
   const addProduct = async () => {
-    if (!name.trim() || !quantity.trim() || !quantityType.trim() || !price.trim()) {
+    if (!name.trim() || !quantity.trim() || !quantityType.trim() || (!toBuy && (!price.trim()))) {
       alert("Fill in the gaps with * please.");
       return;
     }

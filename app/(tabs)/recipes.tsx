@@ -126,7 +126,7 @@ interface Meal {
     console.log("Generated Meals:", meals);
 
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    // console.error("Gemini API Error:", error);
     Alert.alert("API Error", "Could not fetch meal suggestions. Check your API key and network connection.");
   } finally {
     setIsLoading(false);
