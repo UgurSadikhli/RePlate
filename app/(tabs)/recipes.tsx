@@ -1,3 +1,4 @@
+import { GoogleGenAI } from "@google/genai";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,14 +12,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { loadProducts } from "../storage/productStorage"; 
+import { loadProducts } from "../storage/productStorage";
 
-
-import { GoogleGenAI } from "@google/genai";
-
-
-const ai = new GoogleGenAI({ apiKey: "AIzaSyAhftAAskKyF6MFd72q7UHy0lD7DU4r860" }); 
-
+const ai = new GoogleGenAI({ apiKey: "AIzaSyCvo4nDtkUPm3MBmgUF26K65SXzZDL5nw4" }); 
 
 interface Product {
   id: number;
@@ -39,16 +35,14 @@ interface Meal {
   steps: string[];
   calories?: number;
   proteins?: number;
+  estimatedPreparationTime: string;
 }
-
-
 
 export default function MealsScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [suggestedMeals, setSuggestedMeals] = useState<Meal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
-
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -62,67 +56,82 @@ export default function MealsScreen() {
     fetchProducts();
   }, []);
 
-
   const availableIngredients = useMemo(() => {
-
     return products
       .filter(p => !p.toBuy)
       .map(p => `${p.name} (${p.quantity} ${p.quantityType})`)
       .join(", ");
   }, [products]);
 
-
+ const fetchUnsplashImage = async (mealName: string): Promise<string> => {
+  try {
+    const response = await fetch(
+      `https://api.unsplash.com/photos/random?query=${encodeURIComponent(mealName)}&orientation=landscape&client_id=ucLoht6_G-Ejw7LQvx7nQFGMQCh_OR2-HbgQDRgmJfU`
+    );
+    const data = await response.json();
+    return data.urls.small || "https://via.placeholder.com/400x300?text=Meal";
+  } catch (error) {
+    // console.error("Unsplash fetch error:", error);
+    return "https://via.placeholder.com/400x300?text=Meal";
+  }
+};
   const generateMeals = async () => {
-    if (!availableIngredients) {
-        Alert.alert("No Ingredients", "Please add some available products (not marked 'To Buy') to your inventory first.");
-        return;
-    }
+  if (!availableIngredients) {
+      Alert.alert("No Ingredients", "Please add some available products (not marked 'To Buy') to your inventory first.");
+      return;
+  }
 
-    setSuggestedMeals([]);
-    setIsLoading(true);
+  setSuggestedMeals([]);
+  setIsLoading(true);
 
-const prompt = `Based on the following available ingredients, suggest 5 quick and easy meal recipes.
+  const prompt = `Based on the following available ingredients, suggest 6-8 quick and easy meal recipes.
 
 Available ingredients:
 ${availableIngredients}
-(Example format: "Chicken Breast (500 grams), Eggs (6 pieces), Milk (1 liter)")
 
 ---
-**CRITICAL INSTRUCTION:** For each meal, you MUST look at the quantities provided in the "Available ingredients" list above and specify the exact quantity of each ingredient needed for the recipe in the 'ingredients' array. The quantity used must be less than or equal to the available amount.
+**CRITICAL INSTRUCTION:** For each meal, specify the exact quantity of each ingredient needed. Must be less than or equal to the available amount.
 ---
 
-You MUST return the response as a JSON array that strictly adheres to the provided TypeScript interface for an array of Meal objects. DO NOT include any explanatory text, markdown formatting (like JSON block fences), or conversation. The output must be the raw JSON array.
-
-TypeScript Interface:
+Return as JSON array of Meal objects (no explanation, no markdown):
 interface Meal {
   name: string;
   image?: string;
-  ingredients: string[]; // This array MUST contain quantified items (e.g., "300g Chicken Breast", "2 pieces Eggs")
-  steps: string[]; 
+  ingredients: string[];
+  steps: string[];
   calories: number; 
   proteins: number; 
+  estimatedPreparationTime: string; (example: "20 min, 1h, etc.)")
 }`;
 
-    try {
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash", 
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-        }
-      });
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash", 
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
 
-      const jsonString = response.text.trim();
-      const meals: Meal[] = JSON.parse(jsonString);
-      setSuggestedMeals(meals);
+    const jsonString = response.text.trim();
+    let meals: Meal[] = JSON.parse(jsonString);
 
-    } catch (error) {
-      console.error("Gemini API Error:", error);
-      Alert.alert("API Error", "Could not fetch meal suggestions. Check your API key and network connection.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    // Fetch Unsplash images for each meal using your API key
+    meals = await Promise.all(
+      meals.map(async (meal) => ({
+        ...meal,
+        image: await fetchUnsplashImage(meal.name)
+      }))
+    );
+
+    setSuggestedMeals(meals);
+    console.log("Generated Meals:", meals);
+
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    Alert.alert("API Error", "Could not fetch meal suggestions. Check your API key and network connection.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
 
   useEffect(() => {
@@ -130,8 +139,6 @@ interface Meal {
       generateMeals();
     }
   }, [availableIngredients, products]);
-
-
 
   const renderMealCard = ({ item }: { item: Meal }) => (
     <TouchableOpacity style={styles.card} onPress={() => setSelectedMeal(item)}>
@@ -146,7 +153,9 @@ interface Meal {
         <Text style={styles.cardTitle}>{item.name}</Text>
         <Text style={styles.cardSubtitle}>
           {item.calories ? `${item.calories} cal | ` : ""}
-          {item.proteins ? `${item.proteins}g protein` : ""}
+          {item.proteins ? `${item.proteins}g protein | ` : ""}
+          {item.estimatedPreparationTime ? `${item.estimatedPreparationTime}` : ""}
+          
         </Text>
       </View>
     </TouchableOpacity>
@@ -197,7 +206,7 @@ interface Meal {
         <Text style={styles.title}>Suggested Meals</Text>
         {suggestedMeals.length > 0 && !isLoading && (
             <TouchableOpacity onPress={generateMeals} style={styles.generateButton}>
-                <Text style={styles.generateButtonText}>🔄 New Meals</Text>
+                <Text style={styles.generateButtonText}>New Meals</Text>
             </TouchableOpacity>
         )}
       </View>
@@ -227,7 +236,8 @@ interface Meal {
                 <Text style={styles.subTitle}>Nutritional Info</Text>
                 <Text style={styles.modalText}>
                     Calories: {selectedMeal.calories || 'N/A'} | 
-                    Protein: {selectedMeal.proteins ? `${selectedMeal.proteins}g` : 'N/A'}
+                    Protein: {selectedMeal.proteins ? `${selectedMeal.proteins}g` : 'N/A'} | 
+                    Time: {selectedMeal.estimatedPreparationTime ? `${selectedMeal.estimatedPreparationTime}` : "N/A"}
                 </Text>
 
                 <Text style={styles.subTitle}>Ingredients</Text>
@@ -260,7 +270,7 @@ interface Meal {
   );
 }
 
-
+// ----- Styles remain the same -----
 const COLOR_PRIMARY = "#4CAF50"; 
 const COLOR_BACKGROUND = "#000000ff"; 
 const COLOR_CARD = "#1E1E1E"; 
@@ -312,27 +322,15 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 18, fontWeight: "600", color: COLOR_TEXT_LIGHT },
   cardSubtitle: { fontSize: 14, color: COLOR_TEXT_MUTED, marginTop: 4 },
-
-
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.8)", justifyContent: "center", alignItems: "center" },
   modalContent: { width: "90%", maxHeight: "90%", backgroundColor: COLOR_CARD, borderRadius: 16, padding: 20 },
   modalTitle: { fontSize: 24, fontWeight: "bold", marginBottom: 16, color: COLOR_TEXT_LIGHT },
   modalImage: { width: "100%", height: 180, borderRadius: 12, marginBottom: 16 },
   modalText: { color: COLOR_TEXT_LIGHT, fontSize: 15 },
   subTitle: { fontSize: 18, fontWeight: "700", marginTop: 12, marginBottom: 6, color: COLOR_PRIMARY },
-
-
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 10, color: COLOR_TEXT_MUTED, fontSize: 16 },
   emptyText: { fontSize: 16, textAlign: 'center', color: COLOR_TEXT_MUTED, marginBottom: 20 },
-
-
-  primaryButton: {
-    backgroundColor: COLOR_PRIMARY,
-    marginTop: 25,
-    padding: 14,
-    borderRadius: 12,
-    alignItems: "center",
-  },
+  primaryButton: { backgroundColor: COLOR_PRIMARY, marginTop: 25, padding: 14, borderRadius: 12, alignItems: "center" },
   buttonText: { color: COLOR_BACKGROUND, fontWeight: "800", fontSize: 16 },
 });
