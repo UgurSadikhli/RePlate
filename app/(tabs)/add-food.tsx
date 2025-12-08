@@ -75,8 +75,8 @@ export default function ProductsScreen() {
   };
 
   const addProduct = async () => {
-    if (!name.trim()) {
-      alert("Name is required");
+    if (!name.trim() || !quantity.trim() || !quantityType.trim() || !price.trim()) {
+      alert("Fill in the gaps with * please.");
       return;
     }
 
@@ -134,7 +134,7 @@ export default function ProductsScreen() {
            <Text style={styles.header}>New product</Text>
         {/* Name */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Name *</Text>
+          <Text style={styles.label}>Name*</Text>
           <TextInput
             placeholder="Enter product name"
             placeholderTextColor="#999"
@@ -159,7 +159,7 @@ export default function ProductsScreen() {
         {/* Quantity */}
         <View style={styles.row}>
           <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
-            <Text style={styles.label}>Quantity</Text>
+            <Text style={styles.label}>Quantity*</Text>
             <TextInput
               placeholder="0"
               placeholderTextColor="#999"
@@ -170,7 +170,7 @@ export default function ProductsScreen() {
             />
           </View>
           <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={styles.label}>Quantity Type</Text>
+            <Text style={styles.label}>Quantity Type*</Text>
             <TextInput
               placeholder="kg, pcs"
               placeholderTextColor="#999"
@@ -218,7 +218,7 @@ export default function ProductsScreen() {
 
             {/* Price */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Price</Text>
+              <Text style={styles.label}>Price*</Text>
               <TextInput
                 placeholder="$0.00"
                 placeholderTextColor="#999"
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", justifyContent: "space-between" },
   datePicker: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#f1f1f1ee",
     padding: 12,
     borderRadius: 12,
     marginBottom: 12,

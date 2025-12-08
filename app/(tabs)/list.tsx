@@ -498,11 +498,11 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 17, fontWeight: "700", marginBottom: 4, color: "#f1f1f1ee" },
   cardSubtitle: { fontSize: 13, color: "#888", marginBottom: 2 },
   
-  markBoughtBtn: { width: 50, height: 50, borderRadius: 25, backgroundColor: "#4CAF50", justifyContent: "center", alignItems: "center", marginLeft: 8 },
-  markBoughtBtnText: { fontSize: 24, color: "#fff", fontWeight: "bold" },
+  markBoughtBtn: { width: 50, height: 50, borderRadius: 25, backgroundColor: "#00BCD4", justifyContent: "center", alignItems: "center", marginLeft: 8 },
+  markBoughtBtnText: { fontSize: 24, color: "#575555ef", fontWeight: "bold" },
 
   markDoneBtn: { width: 50, height: 50, borderRadius: 25, backgroundColor: "#ffd103ff", justifyContent: "center", alignItems: "center", marginLeft: 8 },
-  markDoneBtnText: { fontSize: 24, color: "#000000d8", fontWeight: "bold"  },
+  markDoneBtnText: { fontSize: 24, color: "#575555ef", fontWeight: "bold"  },
   
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center" },
   modalContent: { width: "90%", maxHeight: "85%", backgroundColor: "#1a1a1a", borderRadius: 18, padding: 24, elevation: 15, borderTopWidth: 3, borderTopColor: "#4CAF50" },
