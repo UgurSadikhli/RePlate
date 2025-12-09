@@ -13,7 +13,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#4caf4f71",
+        "backgroundColor": "#E6F4caf4f714FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -39,7 +39,6 @@
           }
         }
       ]
-      
     ],
     "experiments": {
       "typedRoutes": true,
