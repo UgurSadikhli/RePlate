@@ -12,7 +12,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 
 const TEAM_MEMBERS = [
-  { name: 'Ugur Sadixli', title: 'CEO & Founder', icon: 'star-outline' },
+  { name: 'Uğur Sadıxlı', title: 'CEO & Founder & Developer', icon: 'star-outline' },
 
 ];
 

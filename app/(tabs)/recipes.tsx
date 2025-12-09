@@ -13,8 +13,10 @@ import {
   View,
 } from "react-native";
 import { loadProducts } from "../storage/productStorage";
+import { loadSetting } from "../storage/settingStorage";
 
-const ai = new GoogleGenAI({ apiKey: "AIzaSyCvo4nDtkUPm3MBmgUF26K65SXzZDL5nw4" }); 
+const ai = new GoogleGenAI({ apiKey: "AIzaSyBRIKlUDYJdaerRO6-CCNKQ3GAtYq0vdlg" }); 
+import { useFocusEffect } from "@react-navigation/native";
 
 interface Product {
   id: number;
@@ -38,60 +40,132 @@ interface Meal {
   estimatedPreparationTime: string;
 }
 
+interface Settings {
+  aiPreferences: {
+    isVegetarian: boolean;
+    avoidDairy: boolean;
+    spiceLevel: string;
+    allergens: string;
+  };
+}
+
+const INITIAL_SETTINGS: Settings = {
+  aiPreferences: {
+    isVegetarian: false,
+    avoidDairy: false,
+    spiceLevel: "medium",
+    allergens: "",
+  },
+};
+
 export default function MealsScreen() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [settings, setSettings] = useState<Settings>(INITIAL_SETTINGS);
   const [suggestedMeals, setSuggestedMeals] = useState<Meal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
+useFocusEffect(
+  React.useCallback(() => {
+    const fetchData = async () => {
       try {
         const storedProducts = await loadProducts();
         setProducts(storedProducts);
+
+        const storedSettings = await loadSetting();
+        if (storedSettings) {
+          setSettings({
+            ...INITIAL_SETTINGS,
+            ...storedSettings,
+            aiPreferences: {
+              ...INITIAL_SETTINGS.aiPreferences,
+              ...(storedSettings.aiPreferences || {}),
+            },
+          });
+        }
       } catch (error) {
-        console.error("Failed to load products:", error);
+        console.error("Failed to load data:", error);
       }
     };
-    fetchProducts();
-  }, []);
 
+    fetchData();
+  }, [])
+);
+
+  // Compute available ingredients
   const availableIngredients = useMemo(() => {
     return products
-      .filter(p => !p.toBuy)
-      .map(p => `${p.name} (${p.quantity} ${p.quantityType})`)
+      .filter((p) => !p.toBuy)
+      .map((p) => `${p.name} (${p.quantity} ${p.quantityType})`)
       .join(", ");
   }, [products]);
 
- const fetchUnsplashImage = async (mealName: string): Promise<string> => {
-  try {
-    const response = await fetch(
-      `https://api.unsplash.com/photos/random?query=${encodeURIComponent(mealName)}&orientation=landscape&client_id=ucLoht6_G-Ejw7LQvx7nQFGMQCh_OR2-HbgQDRgmJfU`
-    );
-    const data = await response.json();
-    return data.urls.small || "https://via.placeholder.com/400x300?text=Meal";
-  } catch (error) {
-    // console.error("Unsplash fetch error:", error);
-    return "https://via.placeholder.com/400x300?text=Meal";
-  }
-};
+  // Create AI preference prompt
+  const createPreferencePrompt = (prefs: Settings["aiPreferences"]): string => {
+    const header = "\n**User Preferences & Restrictions:**\n";
+    let prompt = header;
+
+    if (prefs.isVegetarian) {
+      prompt += "- STRICTLY exclude all meat, poultry, and fish. User is vegetarian.\n";
+    }
+
+    if (prefs.avoidDairy) {
+      prompt += "- Avoid all dairy products (milk, butter, cheese, cream).\n";
+    }
+
+    if (prefs.allergens && prefs.allergens.trim() !== "") {
+      prompt += `- STRICTLY exclude the following ingredients due to allergies: ${prefs.allergens}.\n`;
+    }
+
+    if (prefs.spiceLevel && prefs.spiceLevel.toLowerCase() !== "medium") {
+      prompt += `- The preferred maximum spice level is ${prefs.spiceLevel.toUpperCase()}. ADJUST RECIPES ACCORDINGLY.\n`;
+    }
+
+    if (prompt === header) {
+      prompt += "- No special preferences or restrictions set.\n";
+    }
+
+    return prompt;
+  };
+
+  // Fetch image from Unsplash
+  const fetchUnsplashImage = async (mealName: string): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://api.unsplash.com/photos/random?query=${encodeURIComponent(
+          mealName
+        )}&orientation=landscape&client_id=ucLoht6_G-Ejw7LQvx7nQFGMQCh_OR2-HbgQDRgmJfU`
+      );
+      const data = await response.json();
+      return data.urls?.small || "https://via.placeholder.com/400x300?text=Meal";
+    } catch {
+      return "https://via.placeholder.com/400x300?text=Meal";
+    }
+  };
+
+  // Generate meals using AI
   const generateMeals = async () => {
-  if (!availableIngredients) {
-      Alert.alert("No Ingredients", "Please add some available products (not marked 'To Buy') to your inventory first.");
+    if (!availableIngredients) {
+      Alert.alert(
+        "No Ingredients",
+        "Please add some available products (not marked 'To Buy') to your inventory first."
+      );
       return;
-  }
+    }
 
-  setSuggestedMeals([]);
-  setIsLoading(true);
+    setSuggestedMeals([]);
+    setIsLoading(true);
 
-  const prompt = `Based on the following available ingredients, suggest 6-8 quick and easy meal recipes.
+    const preferencePrompt = createPreferencePrompt(settings.aiPreferences);
+
+    // console.log("Generating meals with preferences:", preferencePrompt);
+
+    const prompt = `Based on the following available ingredients, suggest 6-8 quick and easy meal recipes.
+RESTRICTIONS:
+${preferencePrompt}
 
 Available ingredients:
 ${availableIngredients}
-
----
-**CRITICAL INSTRUCTION:** For each meal, specify the exact quantity of each ingredient needed. Must be less than or equal to the available amount.
----
 
 Return as JSON array of Meal objects (no explanation, no markdown):
 interface Meal {
@@ -101,45 +175,46 @@ interface Meal {
   steps: string[];
   calories: number; 
   proteins: number; 
-  estimatedPreparationTime: string; (example: "20 min, 1h, etc.)")
+  estimatedPreparationTime: string;
 }`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash", 
-      contents: prompt,
-      config: { responseMimeType: "application/json" }
-    });
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: { responseMimeType: "application/json" },
+      });
 
-    const jsonString = response.text.trim();
-    let meals: Meal[] = JSON.parse(jsonString);
+      const jsonString = response.text.trim();
+      let meals: Meal[] = JSON.parse(jsonString);
 
-    // Fetch Unsplash images for each meal using your API key
-    meals = await Promise.all(
-      meals.map(async (meal) => ({
-        ...meal,
-        image: await fetchUnsplashImage(meal.name)
-      }))
-    );
+      meals = await Promise.all(
+        meals.map(async (meal) => ({
+          ...meal,
+          image: await fetchUnsplashImage(meal.name),
+        }))
+      );
 
-    setSuggestedMeals(meals);
-    console.log("Generated Meals:", meals);
+      setSuggestedMeals(meals);
+    } catch (error) {
+      console.error("Gemini API Error:", error);
+      Alert.alert(
+        "API Error",
+        "Could not fetch meal suggestions. Check your API key and network connection."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  } catch (error) {
-    // console.error("Gemini API Error:", error);
-    Alert.alert("API Error", "Could not fetch meal suggestions. Check your API key and network connection.");
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-
+  // Auto-generate meals when ingredients or settings are ready
   useEffect(() => {
-    if (availableIngredients && suggestedMeals.length === 0 && products.length > 0) {
+    if (availableIngredients && products.length > 0 && settings) {
       generateMeals();
     }
-  }, [availableIngredients, products]);
+  }, [availableIngredients, products, settings]);
 
+  // Render a single meal card
   const renderMealCard = ({ item }: { item: Meal }) => (
     <TouchableOpacity style={styles.card} onPress={() => setSelectedMeal(item)}>
       {item.image ? (
@@ -155,7 +230,6 @@ interface Meal {
           {item.calories ? `${item.calories} cal | ` : ""}
           {item.proteins ? `${item.proteins}g protein | ` : ""}
           {item.estimatedPreparationTime ? `${item.estimatedPreparationTime}` : ""}
-          
         </Text>
       </View>
     </TouchableOpacity>
@@ -166,23 +240,27 @@ interface Meal {
       return (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#4CAF50" />
-          <Text style={styles.loadingText}>Generating meal ideas based on your food list...</Text>
+          <Text style={styles.loadingText}>
+            Generating meal ideas based on your food list...
+          </Text>
         </View>
       );
     }
 
     if (suggestedMeals.length === 0 && !isLoading) {
-      const message = products.length === 0
-        ? "Your inventory is empty! Add some products to get meal ideas."
-        : "No meals suggested yet. Tap below to generate recipes.";
-        
+      const message =
+        products.length === 0
+          ? "Your inventory is empty! Add some products to get meal ideas."
+          : "No meals suggested yet. Tap below to generate recipes.";
+
       return (
         <View style={styles.center}>
-          <Text style={styles.emptyText}>
-            {message}
-          </Text>
+          <Text style={styles.emptyText}>{message}</Text>
           {products.length > 0 && (
-            <TouchableOpacity onPress={generateMeals} style={[styles.primaryButton, { marginTop: 30 }]}>
+            <TouchableOpacity
+              onPress={generateMeals}
+              style={[styles.primaryButton, { marginTop: 30 }]}
+            >
               <Text style={styles.buttonText}>Generate Meals Now</Text>
             </TouchableOpacity>
           )}
@@ -205,9 +283,9 @@ interface Meal {
       <View style={styles.header}>
         <Text style={styles.title}>Suggested Meals</Text>
         {suggestedMeals.length > 0 && !isLoading && (
-            <TouchableOpacity onPress={generateMeals} style={styles.generateButton}>
-                <Text style={styles.generateButtonText}>New Meals</Text>
-            </TouchableOpacity>
+          <TouchableOpacity onPress={generateMeals} style={styles.generateButton}>
+            <Text style={styles.generateButtonText}>New Meals</Text>
+          </TouchableOpacity>
         )}
       </View>
 
@@ -225,19 +303,27 @@ interface Meal {
               <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>{selectedMeal.name}</Text>
 
-                <View style={[styles.modalImage, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}>
-                    {selectedMeal.image ? (
-                        <Image source={{ uri: selectedMeal.image }} style={{ width: '100%', height: '100%', borderRadius: 10 }} />
-                    ) : (
-                        <Text style={{fontSize: 50}}>🍽️</Text>
-                    )}
+                <View
+                  style={[
+                    styles.modalImage,
+                    { backgroundColor: "#333", justifyContent: "center", alignItems: "center" },
+                  ]}
+                >
+                  {selectedMeal.image ? (
+                    <Image
+                      source={{ uri: selectedMeal.image }}
+                      style={{ width: "100%", height: "100%", borderRadius: 10 }}
+                    />
+                  ) : (
+                    <Text style={{ fontSize: 50 }}>🍽️</Text>
+                  )}
                 </View>
-                
+
                 <Text style={styles.subTitle}>Nutritional Info</Text>
                 <Text style={styles.modalText}>
-                    Calories: {selectedMeal.calories || 'N/A'} | 
-                    Protein: {selectedMeal.proteins ? `${selectedMeal.proteins}g` : 'N/A'} | 
-                    Time: {selectedMeal.estimatedPreparationTime ? `${selectedMeal.estimatedPreparationTime}` : "N/A"}
+                  Calories: {selectedMeal.calories || "N/A"} | Protein:{" "}
+                  {selectedMeal.proteins ? `${selectedMeal.proteins}g` : "N/A"} | Time:{" "}
+                  {selectedMeal.estimatedPreparationTime || "N/A"}
                 </Text>
 
                 <Text style={styles.subTitle}>Ingredients</Text>
@@ -258,7 +344,10 @@ interface Meal {
                   ))}
                 </View>
 
-                <TouchableOpacity style={styles.primaryButton} onPress={() => setSelectedMeal(null)}>
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={() => setSelectedMeal(null)}
+                >
                   <Text style={styles.buttonText}>Close</Text>
                 </TouchableOpacity>
               </ScrollView>
@@ -270,19 +359,19 @@ interface Meal {
   );
 }
 
-// ----- Styles remain the same -----
-const COLOR_PRIMARY = "#4CAF50"; 
-const COLOR_BACKGROUND = "#000000ff"; 
-const COLOR_CARD = "#1E1E1E"; 
-const COLOR_TEXT_LIGHT = "#f1f1f1ee"; 
-const COLOR_TEXT_MUTED = "#B0B0B0"; 
+// ----- Styles -----
+const COLOR_PRIMARY = "#4CAF50";
+const COLOR_BACKGROUND = "#000000ff";
+const COLOR_CARD = "#1E1E1E";
+const COLOR_TEXT_LIGHT = "#f1f1f1ee";
+const COLOR_TEXT_MUTED = "#B0B0B0";
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLOR_BACKGROUND, padding: 16 },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   title: { fontSize: 26, fontWeight: "bold", textAlign: "left", color: COLOR_TEXT_LIGHT },
@@ -292,11 +381,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 20,
   },
-  generateButtonText: {
-    color: COLOR_BACKGROUND,
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
+  generateButtonText: { color: COLOR_BACKGROUND, fontWeight: "bold", fontSize: 14 },
   card: {
     backgroundColor: COLOR_CARD,
     marginBottom: 14,
@@ -315,7 +400,7 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 12,
-    backgroundColor: '#333',
+    backgroundColor: "#333",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 16,
@@ -330,7 +415,7 @@ const styles = StyleSheet.create({
   subTitle: { fontSize: 18, fontWeight: "700", marginTop: 12, marginBottom: 6, color: COLOR_PRIMARY },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 10, color: COLOR_TEXT_MUTED, fontSize: 16 },
-  emptyText: { fontSize: 16, textAlign: 'center', color: COLOR_TEXT_MUTED, marginBottom: 20 },
+  emptyText: { fontSize: 16, textAlign: "center", color: COLOR_TEXT_MUTED, marginBottom: 20 },
   primaryButton: { backgroundColor: COLOR_PRIMARY, marginTop: 25, padding: 14, borderRadius: 12, alignItems: "center" },
   buttonText: { color: COLOR_BACKGROUND, fontWeight: "800", fontSize: 16 },
 });

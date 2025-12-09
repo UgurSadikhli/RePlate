@@ -197,7 +197,7 @@ const addToList = async () => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Scan Food Item</Text>
+            <Text style={styles.title}>Scan Food</Text>
 
             <View style={styles.cameraFrame}>
                 {imageUri ? (

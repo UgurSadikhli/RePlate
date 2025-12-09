@@ -18,6 +18,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { loadProducts, saveProducts } from "../storage/productStorage";
+import { saveSetting, loadSetting } from '../storage/settingStorage'; 
 
 
 const formatDate = (date: Date) => {
@@ -49,6 +50,7 @@ export default function ProductsListScreen() {
   const [showExpirationDatePicker, setShowExpirationDatePicker] = useState(false);
 
   const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
+  const [settingData, loadSettingData] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -89,6 +91,24 @@ export default function ProductsListScreen() {
   const loadData = async () => {
     const data = await loadProducts();
     setProducts(data);
+      const settingData = await loadSetting();
+      loadSettingData(settingData);
+  
+    };
+  
+  
+  
+    const CURRENCY_SYMBOLS = {
+    USD: '$',
+    EUR: '€',
+    GBP: '£',
+    AZN: '₼', 
+  
+  };
+  
+  
+  const getCurrencySymbol = (code: string) => {
+    return CURRENCY_SYMBOLS[code] || code;
   };
 
   useFocusEffect(
@@ -425,7 +445,7 @@ export default function ProductsListScreen() {
                       </View>
                       <View style={styles.infoRow}>
                         <Text style={styles.infoLabel}>Price</Text>
-                        <Text style={styles.infoValue}>${selectedProduct.price}</Text>
+                        <Text style={styles.infoValue}>{getCurrencySymbol(settingData.currency)}{selectedProduct.price}</Text>
                       </View>
                       <View style={styles.infoRow}>
                         <Text style={styles.infoLabel}>Bought Date</Text>

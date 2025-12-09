@@ -6,6 +6,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Animated, ScrollView, StyleSheet, Text, View,TouchableOpacity,Image } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { router, useRootNavigationState } from 'expo-router';
+import { saveSetting, loadSetting } from '../storage/settingStorage'; 
+
 const getExpirationDays = (expirationDateStr) => {
     const expDate = new Date(expirationDateStr);
     const today = new Date();
@@ -124,14 +126,25 @@ function MonthlyConsumptionTracker({ monthlyConsumption }) {
 
 // NEW COMPONENT: Monthly Spending Tracker
 function MonthlySpendingTracker({ monthlySpending }) {
-  
+    const [settingData, loadSettingData] = useState([]);
     const thisMonth = parseFloat(monthlySpending.thisMonth) || 0;
     const lastMonth = parseFloat(monthlySpending.lastMonth) || 0;
     const diff = thisMonth - lastMonth;
     const isHigher = diff > 0;
     
     let icon, comparisonText, color;
+  const CURRENCY_SYMBOLS = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  AZN: '₼', 
 
+};
+
+
+const getCurrencySymbol = (code: string) => {
+  return CURRENCY_SYMBOLS[code] || code;
+};
     if (diff === 0) {
         icon = 'remove-circle';
         comparisonText = 'Spending is the same as last month.';
@@ -147,9 +160,20 @@ function MonthlySpendingTracker({ monthlySpending }) {
     }
     const formatCurrency = (amount) => {
         const numericAmount = isFinite(amount) ? amount : 0;
-        return `$${numericAmount.toFixed(2)}`;
+        return `${getCurrencySymbol(settingData.currency)}${numericAmount.toFixed(2)}`;
     };
+    
+  const loadData = async () => {
 
+      const settingData = await loadSetting();
+      loadSettingData(settingData);
+  
+    };
+    useFocusEffect(
+      useCallback(() => {
+        loadData();
+      }, [])
+    );
     return (
         <View style={[styles.chartContainer, { marginTop: 10 }]}>
             <Text style={styles.chartTitle}>Monthly Spending 💰</Text>

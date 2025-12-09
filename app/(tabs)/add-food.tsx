@@ -18,6 +18,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import Product from "../models/Product";
 import { saveProducts, loadProducts } from "../storage/productStorage";
+import { saveSetting, loadSetting } from '../storage/settingStorage'; 
 
 export default function ProductsScreen() {
   const [products, setProducts] = useState([]);
@@ -38,14 +39,31 @@ export default function ProductsScreen() {
   const [pickerModalVisible, setPickerModalVisible] = useState(false);
   const [currentPicker, setCurrentPicker] = useState("");
   const [tempDate, setTempDate] = useState(new Date());
+  const [settingData, loadSettingData] = useState([]);
 
 
   const loadData = async () => {
     const data = await loadProducts();
     setProducts(data);
-  //  console.log("Products in add page :", data );
+    const settingData = await loadSetting();
+    loadSettingData(settingData);
+
   };
-  
+
+
+
+  const CURRENCY_SYMBOLS = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  AZN: '₼', 
+
+};
+
+
+const getCurrencySymbol = (code: string) => {
+  return CURRENCY_SYMBOLS[code] || code;
+};
 
     useFocusEffect(
       useCallback(() => {
@@ -60,6 +78,7 @@ export default function ProductsScreen() {
       useNativeDriver: true,
     }).start();
   }, [toBuy]);
+
 
   const resetFields = () => {
     setName("");
@@ -220,7 +239,7 @@ export default function ProductsScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Price*</Text>
               <TextInput
-                placeholder="$0.00"
+                placeholder={`${getCurrencySymbol(settingData.currency)} 0.00`}                
                 placeholderTextColor="#999"
                 value={price}
                 onChangeText={setPrice}
