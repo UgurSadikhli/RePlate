@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import deleteImg from '../../assets/images/delete.png';
 
 const ai = new GoogleGenAI({
-    apiKey: "AIzaSyCvo4nDtkUPm3MBmgUF26K65SXzZDL5nw4"
+    apiKey: "AIzaSyAtqX3GO9xQb8V5XBa2Bw--l-twC-orhR0"
 });
 
 const STORAGE_KEY = "products_list";
