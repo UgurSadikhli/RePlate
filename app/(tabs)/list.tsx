@@ -19,7 +19,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { loadProducts, saveProducts } from "../storage/productStorage";
 import { saveSetting, loadSetting } from '../storage/settingStorage'; 
-
+import FillInMissingDetailsGap  from "../../components/fill-in-missing-details-gap";
 
 const formatDate = (date: Date) => {
     const year = date.getFullYear();
@@ -51,6 +51,9 @@ export default function ProductsListScreen() {
 
   const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
   const [settingData, loadSettingData] = useState([]);
+
+  const [gapVisible, setGapVisible] = useState(false);
+const [missingFieldsList, setMissingFieldsList] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -188,16 +191,45 @@ export default function ProductsListScreen() {
     closeModal();
   };
   
-  const markAsDone = (product) => {
-    if (!product.price || !product.expirationDate || !product.quantity || !product.quantityType) {
-        Alert.alert(
-            "Missing Details",
-            "Please ensure Price, Expiration Date, Quantity, and Quantity Type are entered before marking as Done."
-        );
-        return;
+const markAsDone = (product) => {
+    let missingFields = [];
+    if (!product.price) missingFields.push("Price");
+    if (!product.expirationDate) missingFields.push("Expiration Date");
+    if (!product.quantity) missingFields.push("Quantity");
+    if (!product.quantityType) missingFields.push("Quantity Type");
+    if (!product.category) missingFields.push("Category");
+    product.boughtDate = formatDate(new Date());
+
+    if (missingFields.length > 0) {
+        // Instead of a standard Alert, we open your new Slider Modal
+        setSelectedProduct(product);
+        setMissingFieldsList(missingFields);
+        setGapVisible(true);
+    } else {
+        openModal(product, false, true);
     }
-    openModal(product, false, true);
-  };
+};
+
+const handleGapSubmit = async (newValues) => {
+    const updatedProducts = products.map((p) => {
+        if (p.id === selectedProduct.id) {
+            return { 
+                ...p, 
+                price: newValues["Price"] ? parseFloat(newValues["Price"]) : p.price,
+                expirationDate: newValues["Expiration Date"] || p.expirationDate,
+                quantity: newValues["Quantity"] || p.quantity,
+                quantityType: newValues["Quantity Type"] || p.quantityType,
+                inProgress: false // Mark as finished
+            };
+        }
+        return p;
+    });
+    
+    setProducts(updatedProducts);
+    await saveProducts(updatedProducts);
+    setGapVisible(false);
+    setSelectedProduct(null);
+};
 
   const handleBoughtDateChange = (event, selectedDate) => {
     setShowBoughtDatePicker(false);
@@ -292,6 +324,12 @@ export default function ProductsListScreen() {
         </TouchableOpacity>
       </ScrollView>
 
+<FillInMissingDetailsGap 
+      visible={gapVisible}
+      missingDetails={missingFieldsList}
+      onClose={() => setGapVisible(false)}
+      onSubmit={handleGapSubmit}
+    />
 
       {filteredProducts.map((p) => (
         <View key={p.id} style={{ marginBottom: 14, position: 'relative' }}>
