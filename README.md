@@ -15,7 +15,9 @@ In a world where food waste is a major global issue, NutriGuard AI empowers user
 
 ---
 
-## Images
+<br/>
+
+## `Images`
 
 | | | |
 | :---: | :---: | :---: |
