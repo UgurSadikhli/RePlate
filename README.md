@@ -18,21 +18,10 @@ In a world where food waste is a major global issue, NutriGuard AI empowers user
 ## Images
 
 | | | |
-|:---:|:---:|:---:|
-| <img width="590" height="1278" alt="IMG_1185" src="https://github.com/user-attachments/assets/2f2bad47-5f6a-4286-b05f-da2db9ab6220" />
-| <img width="590" height="1278" alt="IMG_1186" src="https://github.com/user-attachments/assets/b14bb7bf-78c2-4360-87f4-8585602f7b66" />
-| <img width="590" height="1278" alt="IMG_1187" src="https://github.com/user-attachments/assets/61b6f895-4607-4487-a9d6-cd8751eb878f" />
-|
-| <img width="590" height="1278" alt="IMG_1188" src="https://github.com/user-attachments/assets/437d2785-170b-4654-a6d4-63bbf151895c" />
-| <img width="590" height="1278" alt="IMG_1190" src="https://github.com/user-attachments/assets/1d06bbfb-23a8-4268-bf61-0bf76ffa471e" />
-| <img width="590" height="1278" alt="IMG_1189" src="https://github.com/user-attachments/assets/2e5ad6c6-4ae9-4c46-9242-942fd1b6f284" />
-|
-| <img width="590" height="1278" alt="IMG_1192" src="https://github.com/user-attachments/assets/c01e9d8e-1277-4fc4-b57d-6544769351d7" />
-| <img width="590" height="1278" alt="IMG_1191" src="https://github.com/user-attachments/assets/5a34cf7a-6a20-44bd-afb3-b2122379e066" /> 
-| <img width="590" height="1278" alt="IMG_1193" src="https://github.com/user-attachments/assets/9221aa16-799a-47c9-9389-e96a8ad61c57" />
-| 
-
----
+| :---: | :---: | :---: |
+| <img src="https://github.com/user-attachments/assets/2f2bad47-5f6a-4286-b05f-da2db9ab6220" width="280" alt="Home Screen" /> | <img src="https://github.com/user-attachments/assets/b14bb7bf-78c2-4360-87f4-8585602f7b66" width="280" alt="Inventory List" /> | <img src="https://github.com/user-attachments/assets/61b6f895-4607-4487-a9d6-cd8751eb878f" width="280" alt="AI Suggestions" /> |
+| <img src="https://github.com/user-attachments/assets/437d2785-170b-4654-a6d4-63bbf151895c" width="280" alt="Food Details" /> | <img src="https://github.com/user-attachments/assets/1d06bbfb-23a8-4268-bf61-0bf76ffa471e" width="280" alt="Health Metrics" /> | <img src="https://github.com/user-attachments/assets/2e5ad6c6-4ae9-4c46-9242-942fd1b6f284" width="280" alt="Expiration Alerts" /> |
+| <img src="https://github.com/user-attachments/assets/c01e9d8e-1277-4fc4-b57d-6544769351d7" width="280" alt="Settings" /> | <img src="https://github.com/user-attachments/assets/5a34cf7a-6a20-44bd-afb3-b2122379e066" width="280" alt="Recipe View" /> | <img src="https://github.com/user-attachments/assets/9221aa16-799a-47c9-9389-e96a8ad61c57" width="280" alt="AI Chat" /> |
 
 ## Try it on Expo
 
