@@ -68,5 +68,6 @@ Your app is ready to be deployed!
 - **State Management:** Context API / Redux
 - **Styling:** Styled Components / NativeWind
 
-### This code belong to Ughur Sadikhli. 
-
+---
+Developed with ❤️ by **Ughur Sadikhli**  
+© 2026 RePlate Project. All rights reserved.[cite: 1]
