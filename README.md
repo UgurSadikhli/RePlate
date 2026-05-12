@@ -68,5 +68,5 @@ Your app is ready to be deployed!
 - **State Management:** Context API / Redux
 - **Styling:** Styled Components / NativeWind
 
-# This code belong to Ughur Sadikhli. 
+### This code belong to Ughur Sadikhli. 
 
