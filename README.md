@@ -31,7 +31,7 @@ Experience the app instantly by scanning the QR code below or using the Expo Go 
 [https://expo.dev/RePlate]([https://expo.dev/@your-username/nutriguard-ai](https://expo.dev/preview/update?message=fill+in+the+missing+gap+component+added%2C+it+initialisez+the+data+of+product+before+turning+it+to+DONE+state&updateRuntimeVersion=1.0.0&createdAt=2026-05-08T22%3A35%3A14.806Z&slug=exp&projectId=121633b5-92ad-4e89-9d0c-2bec5f994bf0&group=303a1b48-952d-4da1-a45c-0a8787a7d6ce))
 
 ### Scan to Preview
-![Expo QR Code Placeholder]([https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://expo.dev/@your-username/nutriguard-ai](https://qr.expo.dev/eas-update?slug=exp&projectId=121633b5-92ad-4e89-9d0c-2bec5f994bf0&groupId=303a1b48-952d-4da1-a45c-0a8787a7d6ce&host=u.expo.dev))
+<img width="252" height="251" alt="Qr" src="https://github.com/user-attachments/assets/53ff6b76-cddb-4a7b-be86-647b13e2351a" />
 *Note: Ensure you have the [Expo Go](https://expo.dev/expo-go) app installed on your iOS or Android device.*
 
 ---
