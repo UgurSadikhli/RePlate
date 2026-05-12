@@ -28,10 +28,11 @@ In a world where food waste is a major global issue, NutriGuard AI empowers user
 Experience the app instantly by scanning the QR code below or using the Expo Go link.
 
 ### Expo Go URL
-[https://expo.dev/RePlate]([https://expo.dev/@your-username/nutriguard-ai](https://expo.dev/preview/update?message=fill+in+the+missing+gap+component+added%2C+it+initialisez+the+data+of+product+before+turning+it+to+DONE+state&updateRuntimeVersion=1.0.0&createdAt=2026-05-08T22%3A35%3A14.806Z&slug=exp&projectId=121633b5-92ad-4e89-9d0c-2bec5f994bf0&group=303a1b48-952d-4da1-a45c-0a8787a7d6ce))
+[Open RePlate on Expo](https://expo.dev/preview/update?message=fill+in+the+missing+gap+component+added%2C+it+initialisez+the+data+of+product+before+turning+it+to+DONE+state&updateRuntimeVersion=1.0.0&createdAt=2026-05-08T22%3A35%3A14.806Z&slug=exp&projectId=121633b5-92ad-4e89-9d0c-2bec5f994bf0&group=303a1b48-952d-4da1-a45c-0a8787a7d6ce)
 
 ### Scan to Preview
 <img width="252" height="251" alt="Qr" src="https://github.com/user-attachments/assets/53ff6b76-cddb-4a7b-be86-647b13e2351a" />
+<br/>
 *Note: Ensure you have the [Expo Go](https://expo.dev/expo-go) app installed on your iOS or Android device.*
 
 ---
@@ -43,7 +44,7 @@ Follow these steps to get the development environment set up on your local machi
 ### `npm install`
 This installs all the `node_modules` which are essential to run the project.
 
-### `npm start/npm run dev`
+### `npm start / npm run dev`
 Runs the app in the development mode.
 Open [http://localhost:3000](http://localhost:3000) to view the bundler in your browser (or use the Expo CLI in your terminal).
 
