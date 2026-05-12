@@ -1,8 +1,8 @@
-# 🍎 NutriGuard AI: Smart Food Arsenal & Expiration Monitor
+# RePlate AI: Smart Food Arsenal & Expiration Monitor
 
-NutriGuard AI is a cutting-edge React Native application designed to tackle food waste and optimize your nutrition. By tracking the expiration dates of your pantry and fridge items, the app leverages integrated AI to suggest healthy, nutrient-dense recipes and meal plans based specifically on the ingredients you already have in your "food arsenal."
+RePlate AI is a cutting-edge React Native application designed to tackle food waste and optimize your nutrition. By tracking the expiration dates of your pantry and fridge items, the app leverages integrated AI to suggest healthy, nutrient-dense recipes and meal plans based specifically on the ingredients you already have in your "food arsenal."
 
-## 🚀 Overview
+## Overview
 
 In a world where food waste is a major global issue, NutriGuard AI empowers users to keep track of their consumption. No more forgotten vegetables at the back of the fridge. With automated alerts and AI-driven insights, you can turn about-to-expire items into gourmet, healthy meals.
 
@@ -15,25 +15,34 @@ In a world where food waste is a major global issue, NutriGuard AI empowers user
 
 ---
 
-## 📸 Project Screenshots
+## Images
 
 | | | |
 |:---:|:---:|:---:|
-| <img src="https://github.com/user-attachments/assets/85923eda-4a47-4d28-8488-0e9b53513cce" width="250"> | <img src="https://github.com/user-attachments/assets/b4b991ae-2af6-46a6-b85a-6a0fa94459a6" width="250"> | <img src="https://github.com/user-attachments/assets/da865403-ec86-4c2f-9602-4c5bcc6a8b39" width="250"> |
-| <img src="https://github.com/user-attachments/assets/cce737b4-e139-476d-9fd9-668963ff1c7d" width="250"> | *(More images coming soon)* | *(More images coming soon)* |
-| *(More images coming soon)* | *(More images coming soon)* | *(More images coming soon)* |
+| <img width="590" height="1278" alt="IMG_1185" src="https://github.com/user-attachments/assets/2f2bad47-5f6a-4286-b05f-da2db9ab6220" />
+| <img width="590" height="1278" alt="IMG_1186" src="https://github.com/user-attachments/assets/b14bb7bf-78c2-4360-87f4-8585602f7b66" />
+| <img width="590" height="1278" alt="IMG_1187" src="https://github.com/user-attachments/assets/61b6f895-4607-4487-a9d6-cd8751eb878f" />
+|
+| <img width="590" height="1278" alt="IMG_1188" src="https://github.com/user-attachments/assets/437d2785-170b-4654-a6d4-63bbf151895c" />
+| <img width="590" height="1278" alt="IMG_1190" src="https://github.com/user-attachments/assets/1d06bbfb-23a8-4268-bf61-0bf76ffa471e" />
+| <img width="590" height="1278" alt="IMG_1189" src="https://github.com/user-attachments/assets/2e5ad6c6-4ae9-4c46-9242-942fd1b6f284" />
+|
+| <img width="590" height="1278" alt="IMG_1192" src="https://github.com/user-attachments/assets/c01e9d8e-1277-4fc4-b57d-6544769351d7" />
+| <img width="590" height="1278" alt="IMG_1191" src="https://github.com/user-attachments/assets/5a34cf7a-6a20-44bd-afb3-b2122379e066" /> 
+| <img width="590" height="1278" alt="IMG_1193" src="https://github.com/user-attachments/assets/9221aa16-799a-47c9-9389-e96a8ad61c57" />
+| 
 
 ---
 
-## 📱 Try it on Expo
+## Try it on Expo
 
 Experience the app instantly by scanning the QR code below or using the Expo Go link.
 
 ### Expo Go URL
-[https://expo.dev/@your-username/nutriguard-ai](https://expo.dev/@your-username/nutriguard-ai)
+[https://expo.dev/RePlate]([https://expo.dev/@your-username/nutriguard-ai](https://expo.dev/preview/update?message=fill+in+the+missing+gap+component+added%2C+it+initialisez+the+data+of+product+before+turning+it+to+DONE+state&updateRuntimeVersion=1.0.0&createdAt=2026-05-08T22%3A35%3A14.806Z&slug=exp&projectId=121633b5-92ad-4e89-9d0c-2bec5f994bf0&group=303a1b48-952d-4da1-a45c-0a8787a7d6ce))
 
 ### Scan to Preview
-![Expo QR Code Placeholder](https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://expo.dev/@your-username/nutriguard-ai)
+![Expo QR Code Placeholder]([https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://expo.dev/@your-username/nutriguard-ai](https://qr.expo.dev/eas-update?slug=exp&projectId=121633b5-92ad-4e89-9d0c-2bec5f994bf0&groupId=303a1b48-952d-4da1-a45c-0a8787a7d6ce&host=u.expo.dev))
 *Note: Ensure you have the [Expo Go](https://expo.dev/expo-go) app installed on your iOS or Android device.*
 
 ---
@@ -45,7 +54,7 @@ Follow these steps to get the development environment set up on your local machi
 ### `npm install`
 This installs all the `node_modules` which are essential to run the project.
 
-### `npm start`
+### `npm start/npm run dev`
 Runs the app in the development mode.
 Open [http://localhost:3000](http://localhost:3000) to view the bundler in your browser (or use the Expo CLI in your terminal).
 
@@ -70,5 +79,5 @@ Your app is ready to be deployed!
 - **State Management:** Context API / Redux
 - **Styling:** Styled Components / NativeWind
 
-## 🤝 Contributing
-Contributions are welcome! Feel free to open an issue or submit a pull request to help make food waste a thing of the past.
+## This code belong to Ughur Sadikhli. 
+
