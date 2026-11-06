@@ -1,75 +1,40 @@
-import { useState,useCallback, useEffect } from "react";
-import { useFocusEffect } from "@react-navigation/native";
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useEffect, useRef, useState } from 'react';
 import {
-  View,
+  Alert,
+  Animated,
+  Image,
+  StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Switch,
-  Animated,
-  Image,
-  Modal,
-  Button
-} from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import * as ImagePicker from "expo-image-picker";
-import Product from "../models/Product";
-import { saveProducts, loadProducts } from "../storage/productStorage";
-import { saveSetting, loadSetting } from '../storage/settingStorage'; 
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import * as ImagePicker from 'expo-image-picker';
+import { DatePickerModal } from '@/components/date-picker-modal';
+import { useAppContext } from '@/context/AppContext';
+import Product from '@/models/Product';
+import { getCurrencySymbol } from '@/utils/currency';
+import { formatDate } from '@/utils/date';
 
 export default function ProductsScreen() {
-  const [products, setProducts] = useState([]);
+  const { settings, addProducts } = useAppContext();
 
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState("");
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('');
   const [expirationDate, setExpirationDate] = useState(new Date());
   const [boughtDate, setBoughtDate] = useState(new Date());
-  const [quantity, setQuantity] = useState("");
-  const [quantityType, setQuantityType] = useState("");
-  const [price, setPrice] = useState("");
-  const [image, setImage] = useState("");
-  const [notes, setNotes] = useState("");
+  const [quantity, setQuantity] = useState('');
+  const [quantityType, setQuantityType] = useState('');
+  const [price, setPrice] = useState('');
+  const [image, setImage] = useState('');
+  const [notes, setNotes] = useState('');
   const [toBuy, setToBuy] = useState(false);
 
-  const fadeAnim = useState(new Animated.Value(1))[0];
-
-  const [pickerModalVisible, setPickerModalVisible] = useState(false);
-  const [currentPicker, setCurrentPicker] = useState("");
-  const [tempDate, setTempDate] = useState(new Date());
-  const [settingData, loadSettingData] = useState([]);
-
-
-  const loadData = async () => {
-    const data = await loadProducts();
-    setProducts(data);
-    const settingData = await loadSetting();
-    loadSettingData(settingData);
-
-  };
-
-
-
-  const CURRENCY_SYMBOLS = {
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  AZN: '₼', 
-
-};
-
-
-const getCurrencySymbol = (code: string) => {
-  return CURRENCY_SYMBOLS[code] || code;
-};
-
-    useFocusEffect(
-      useCallback(() => {
-        loadData();
-      }, [])
-    );
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [activePicker, setActivePicker] = useState<'bought' | 'expiration' | null>(null);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -77,86 +42,81 @@ const getCurrencySymbol = (code: string) => {
       duration: 300,
       useNativeDriver: true,
     }).start();
-  }, [toBuy]);
-
+  }, [toBuy, fadeAnim]);
 
   const resetFields = () => {
-    setName("");
-    setCategory("");
+    setName('');
+    setCategory('');
     setExpirationDate(new Date());
     setBoughtDate(new Date());
-    setQuantity("");
-    setQuantityType("");
-    setPrice("");
-    setImage("");
-    setNotes("");
+    setQuantity('');
+    setQuantityType('');
+    setPrice('');
+    setImage('');
+    setNotes('');
     setToBuy(false);
   };
 
-  const addProduct = async () => {
-    if (!name.trim() || !quantity.trim() || !quantityType.trim() || (!toBuy && (!price.trim()))) {
-      alert("Fill in the gaps with * please.");
+  const handleAddProduct = async () => {
+    if (!name.trim() || !quantity.trim() || !quantityType.trim() || (!toBuy && !price.trim())) {
+      Alert.alert('Missing Fields', 'Please fill in all required fields marked with *.');
       return;
     }
 
-    // Store immutable copies
+    const parsedPrice = toBuy ? 0 : parseFloat(price.trim().replace(',', '.')) || 0;
+
     const newProduct = new Product(
       Date.now(),
       name.trim(),
       category.trim(),
-      toBuy ? "" : expirationDate.toISOString().split("T")[0],
-      toBuy ? "" : boughtDate.toISOString().split("T")[0],
+      toBuy ? '' : formatDate(expirationDate),
+      toBuy ? '' : formatDate(boughtDate),
       quantity.trim(),
       quantityType.trim(),
-      toBuy ? "" : price.trim(),
-      toBuy ? "" : image,
+      parsedPrice,
+      toBuy ? '' : image,
       notes.trim(),
-      toBuy
+      toBuy,
+      false
     );
 
-    const updated = [...products, newProduct];
-    setProducts(updated);
-    await saveProducts(updated);
+    await addProducts([newProduct]);
     resetFields();
+    Alert.alert('Success', `${newProduct.name} has been added!`);
   };
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
-      quality: 1,
+      quality: 0.8,
     });
 
-    if (!result.canceled) setImage(result.assets[0].uri);
-  };
-
-  const openDatePicker = (type) => {
-    setCurrentPicker(type);
-    setTempDate(type === "expiration" ? expirationDate : boughtDate);
-    setPickerModalVisible(true);
-  };
-
-  const saveDate = () => {
-    if (currentPicker === "expiration") setExpirationDate(new Date(tempDate));
-    else setBoughtDate(new Date(tempDate));
-    setPickerModalVisible(false);
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
   };
 
   return (
-    <KeyboardAwareScrollView
-      style={{ flex: 1 }}
-      extraHeight={110}
-      enableOnAndroid={true}
-    >
-   
-      <ScrollView contentContainerStyle={styles.container}>
-           <Text style={styles.header}>New product</Text>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <KeyboardAwareScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.container}
+        extraHeight={110}
+        enableOnAndroid={true}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.headerBlock}>
+          <Text style={styles.header}>Add Product</Text>
+          <Text style={styles.subHeader}>Add items to your inventory or shopping list</Text>
+        </View>
+
         {/* Name */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Name*</Text>
           <TextInput
             placeholder="Enter product name"
-            placeholderTextColor="#999"
+            placeholderTextColor="#666"
             value={name}
             onChangeText={setName}
             style={styles.input}
@@ -167,8 +127,8 @@ const getCurrencySymbol = (code: string) => {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Category</Text>
           <TextInput
-            placeholder="Enter category"
-            placeholderTextColor="#999"
+            placeholder="e.g., Dairy, Produce, Pantry"
+            placeholderTextColor="#666"
             value={category}
             onChangeText={setCategory}
             style={styles.input}
@@ -181,18 +141,18 @@ const getCurrencySymbol = (code: string) => {
             <Text style={styles.label}>Quantity*</Text>
             <TextInput
               placeholder="0"
-              placeholderTextColor="#999"
+              placeholderTextColor="#666"
               value={quantity}
               onChangeText={setQuantity}
-              keyboardType="numeric"
+              keyboardType="decimal-pad"
               style={styles.input}
             />
           </View>
           <View style={[styles.inputGroup, { flex: 1 }]}>
             <Text style={styles.label}>Quantity Type*</Text>
             <TextInput
-              placeholder="kg, pcs"
-              placeholderTextColor="#999"
+              placeholder="kg, g, pcs"
+              placeholderTextColor="#666"
               value={quantityType}
               onChangeText={setQuantityType}
               style={styles.input}
@@ -202,8 +162,16 @@ const getCurrencySymbol = (code: string) => {
 
         {/* To Buy Switch */}
         <View style={styles.switchRow}>
-          <Text style={styles.switchText}>To Buy</Text>
-          <Switch value={toBuy} onValueChange={setToBuy} />
+          <View>
+            <Text style={styles.switchText}>Add to Shopping List (To Buy)</Text>
+            <Text style={styles.switchHint}>Skip price & expiration until purchased</Text>
+          </View>
+          <Switch
+            value={toBuy}
+            onValueChange={setToBuy}
+            trackColor={{ false: '#333', true: '#4CAF50' }}
+            thumbColor="#fff"
+          />
         </View>
 
         {/* Conditional Fields */}
@@ -211,39 +179,32 @@ const getCurrencySymbol = (code: string) => {
           <Animated.View style={{ opacity: fadeAnim }}>
             {/* Dates */}
             <View style={styles.row}>
-
-               <TouchableOpacity
-                style={styles.datePicker}
-                onPress={() => openDatePicker("bought")}
+              <TouchableOpacity
+                style={[styles.datePicker, { marginRight: 10 }]}
+                onPress={() => setActivePicker('bought')}
               >
-                <Text style={styles.dateText}>Bought: </Text>
-                <Text style={styles.dateText2}>
-                  {boughtDate.toISOString().split("T")[0]}
-                </Text>
+                <Text style={styles.dateText}>Bought Date</Text>
+                <Text style={styles.dateText2}>{formatDate(boughtDate)}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.datePicker}
-                onPress={() => openDatePicker("expiration")}
+                onPress={() => setActivePicker('expiration')}
               >
-                <Text style={styles.dateText}>Expiration: </Text>
-                <Text style={styles.dateText2}>
-                  {expirationDate.toISOString().split("T")[0]}
-                </Text>
+                <Text style={styles.dateText}>Expiration Date</Text>
+                <Text style={styles.dateText2}>{formatDate(expirationDate)}</Text>
               </TouchableOpacity>
-
-             
             </View>
 
             {/* Price */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Price*</Text>
               <TextInput
-                placeholder={`${getCurrencySymbol(settingData.currency)} 0.00`}                
-                placeholderTextColor="#999"
+                placeholder={`${getCurrencySymbol(settings.currency)} 0.00`}
+                placeholderTextColor="#666"
                 value={price}
                 onChangeText={setPrice}
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 style={styles.input}
               />
             </View>
@@ -253,122 +214,121 @@ const getCurrencySymbol = (code: string) => {
               <Text style={styles.label}>Notes</Text>
               <TextInput
                 placeholder="Additional info..."
-                placeholderTextColor="#999"
+                placeholderTextColor="#666"
                 value={notes}
                 onChangeText={setNotes}
                 multiline
                 numberOfLines={3}
-                style={[styles.input, { height: 80 }]}
+                style={[styles.input, { height: 84, textAlignVertical: 'top' }]}
               />
             </View>
 
             {/* Image Picker */}
             <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
               <Text style={styles.imageButtonText}>
-                {image ? "Change Image" : "Upload Image"}
+                {image ? 'Change Image' : 'Upload Product Photo'}
               </Text>
             </TouchableOpacity>
-            {image && <Image source={{ uri: image }} style={styles.imagePreview} />}
+            {!!image && <Image source={{ uri: image }} style={styles.imagePreview} />}
           </Animated.View>
         )}
 
         {/* Add Button */}
-        <TouchableOpacity style={styles.addButton} onPress={addProduct}>
+        <TouchableOpacity style={styles.addButton} onPress={handleAddProduct}>
           <Text style={styles.addButtonText}>Add Product</Text>
         </TouchableOpacity>
 
-        {/* Date Picker Modal */}
-        <Modal
-          transparent
-          animationType="slide"
-          visible={pickerModalVisible}
-          onRequestClose={() => setPickerModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 10, color: "#f1f1f1ee" }}>
-                Select {currentPicker === "expiration" ? "Expiration" : "Bought"} Date
-              </Text>
-              <DateTimePicker
-                value={tempDate}
-                mode="date"
-                display="spinner"
-                onChange={(e, selectedDate) => {
-                  if (selectedDate) setTempDate(selectedDate);
-                }}
-                style={{ width: "100%" }}
-              />
-              <Button title="Done" onPress={saveDate} />
-            </View>
-          </View>
-        </Modal>
-      </ScrollView>
-    </KeyboardAwareScrollView>
+        {/* Cross-Platform Date Picker Modal */}
+        <DatePickerModal
+          visible={activePicker !== null}
+          title={activePicker === 'expiration' ? 'Select Expiration Date' : 'Select Bought Date'}
+          value={activePicker === 'expiration' ? expirationDate : boughtDate}
+          onClose={() => setActivePicker(null)}
+          onSelectDate={(selectedDate) => {
+            if (activePicker === 'expiration') {
+              setExpirationDate(selectedDate);
+            } else if (activePicker === 'bought') {
+              setBoughtDate(selectedDate);
+            }
+          }}
+        />
+      </KeyboardAwareScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { textAlign: "left", fontSize: 26, fontWeight: "800", marginBottom: 20, color: "#f1f1f1ee", letterSpacing: 0.5 },
-  container: { padding: 15, backgroundColor: "#000000ff" },
+  safeArea: { flex: 1, backgroundColor: '#000000' },
+  screen: { flex: 1, backgroundColor: '#000000' },
+  headerBlock: { marginBottom: 20, marginTop: 6 },
+  header: {
+    textAlign: 'left',
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  subHeader: {
+    fontSize: 14,
+    color: '#888888',
+    marginTop: 4,
+  },
+  container: { paddingHorizontal: 16, paddingBottom: 40, backgroundColor: '#000000' },
   inputGroup: { marginBottom: 15 },
-  label: { fontWeight: "600", marginBottom: 5, color: "#f1f1f1ee" },
+  label: { fontWeight: '600', fontSize: 14, marginBottom: 6, color: '#EAEAEA' },
   input: {
-    backgroundColor: "#f1f1f1ee",
+    backgroundColor: '#111111',
+    borderWidth: 1,
+    borderColor: '#222222',
     borderRadius: 12,
     paddingHorizontal: 15,
-    paddingVertical: 12,
+    paddingVertical: 13,
     fontSize: 16,
-    color: "#333131ff",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
+    color: '#FFFFFF',
   },
-  switchRow: { flexDirection: "row", alignItems: "center", marginBottom: 15 },
-  switchText: { fontSize: 16, marginRight: 10, color: "#f1f1f1ee" },
-  row: { flexDirection: "row", justifyContent: "space-between" },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#111111',
+    borderWidth: 1,
+    borderColor: '#222222',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  switchText: { fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
+  switchHint: { fontSize: 12, color: '#777777', marginTop: 2 },
+  row: { flexDirection: 'row', justifyContent: 'space-between' },
   datePicker: {
     flex: 1,
-    backgroundColor: "#f1f1f1ee",
-    padding: 12,
+    backgroundColor: '#111111',
+    borderWidth: 1,
+    borderColor: '#222222',
+    padding: 13,
+    borderRadius: 12,
+    marginBottom: 15,
+    justifyContent: 'center',
+  },
+  dateText: { color: '#888888', fontSize: 12, fontWeight: '600' },
+  dateText2: { color: '#FFFFFF', fontSize: 15, fontWeight: '700', marginTop: 4 },
+  imageButton: {
+    backgroundColor: '#162436',
+    borderWidth: 1,
+    borderColor: '#2196F3',
+    paddingVertical: 13,
     borderRadius: 12,
     marginBottom: 12,
-    marginRight: 10,
-    justifyContent: "center",
-    shadowColor: "#000000ca",
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
+    alignItems: 'center',
   },
-  dateText: { color: "#555", fontWeight: "500" },
-  dateText2: { color: "#4e4949ff", fontWeight: "700" },
-  imageButton: {
-    backgroundColor: "#2196F3",
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginBottom: 10,
-    alignItems: "center",
+  imageButtonText: { color: '#64B5F6', fontWeight: '700', fontSize: 15 },
+  imagePreview: { width: '100%', height: 160, borderRadius: 12, marginBottom: 15 },
+  addButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 16,
+    borderRadius: 14,
+    marginTop: 8,
+    alignItems: 'center',
   },
-  imageButtonText: { color: "#fff", fontWeight: "600", fontSize: 16 },
-  imagePreview: { width: "100%", height: 150, borderRadius: 12, marginBottom: 15 },
-  addButton: { backgroundColor: "#4CAF50", paddingVertical: 15, borderRadius: 12, marginTop: 10, alignItems: "center" },
-  addButtonText: { color: "#fff", fontWeight: "700", fontSize: 18 },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.77)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    width: "85%",
-    backgroundColor: "#0f0e0eff",
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-  },
+  addButtonText: { color: '#FFFFFF', fontWeight: '800', fontSize: 17 },
 });

@@ -8,7 +8,7 @@ import {
   SafeAreaView, 
   Linking // Used to open external links (like email)
 } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons'; 
+import { Ionicons } from '@expo/vector-icons'; 
 
 // Contact Details
 const CONTACT_DETAILS = {
@@ -32,7 +32,7 @@ const ContactUs: React.FC = () => {
         
         <View style={styles.header}>
           <Text style={styles.title}>Get In Touch</Text>
-          <Text style={styles.subtitle}>We're here to help you reduce food waste.</Text>
+          <Text style={styles.subtitle}>We&apos;re here to help you reduce food waste.</Text>
         </View>
 
         <View style={styles.section}>

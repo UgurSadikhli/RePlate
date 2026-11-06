@@ -1,562 +1,579 @@
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Button } from '@react-navigation/elements';
-import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useEffect, useState } from 'react';
-import { Animated, ScrollView, StyleSheet, Text, View,TouchableOpacity,Image } from 'react-native';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { router, useRootNavigationState } from 'expo-router';
-import { saveSetting, loadSetting } from '../storage/settingStorage'; 
+import { router } from 'expo-router';
+import { useMemo } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { BrandLogo } from '@/components/brand-logo';
+import { useAppContext } from '@/context/AppContext';
+import { ProductItem } from '@/models/Product';
+import { formatCurrency } from '@/utils/currency';
+import { EXPIRES_SOON_DAYS, getExpirationDays, parseFormattedDate } from '@/utils/date';
 
-const getExpirationDays = (expirationDateStr) => {
-    const expDate = new Date(expirationDateStr);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    expDate.setHours(0, 0, 0, 0);
-    const diffTime = expDate - today;
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-};
+const aggregateByExpiration = (products: ProductItem[]) => {
+  const filtered = products.filter((p) => !p.toBuy && p.expirationDate);
+  const counts = {
+    '7 Days': 0,
+    '14 Days': 0,
+    '30 Days': 0,
+  };
 
-const aggregateByExpiration = (products, getExpirationDays) => {
-    const filtered = products.filter(p => !p.toBuy && p.expirationDate);
-    const counts = {
-        '7 Days': 0,
-        '14 Days': 0,
-        '30 Days': 0,
-    };
-
-    filtered.forEach(p => {
-        const days = getExpirationDays(p.expirationDate);
-        if (days >= 0 && days <= 7) {
-            counts['7 Days']++;
-        }
-        if (days > 7 && days <= 14) {
-            counts['14 Days']++;
-        }
-        if (days > 14 && days <= 30) {
-            counts['30 Days']++;
-        }
-    });
-
-    return [
-        { label: '0-7 Days', count: counts['7 Days'], color: '#FF6B6B' },
-        { label: '8-14 Days', count: counts['14 Days'], color: '#FFD700' },
-        { label: '15-30 Days', count: counts['30 Days'], color: '#4CAF50' },
-    ];
-};
-
-function ExpirationTimelineChart({ products, getExpirationDays }) {
-    if (products.filter(p => !p.toBuy && p.expirationDate && getExpirationDays(p.expirationDate) >= 0).length === 0) return null;
-
-    const data = aggregateByExpiration(products, getExpirationDays);
-    const maxCount = Math.max(...data.map(item => item.count), 1);
-
-    return (
-        <View style={styles.chartContainer}>
-            <Text style={styles.chartTitle}>Expiration Timeline 🗓️</Text>
-            <View style={styles.barChartWrapper}>
-                {data.map((item, index) => (
-                    <View key={index} style={styles.barContainer}>
-                        <Text style={styles.barLabel}>{item.label}</Text>
-                        <View style={styles.barTrack}>
-                            <View 
-                                style={[
-                                    styles.barFill, 
-                                    { 
-                                        width: `${(item.count / maxCount) * 100}%`,
-                                        backgroundColor: item.color
-                                    }
-                                ]}
-                            />
-                        </View>
-                        <Text style={styles.barCount}>{item.count}</Text>
-                    </View>
-                ))}
-            </View>
-        </View>
-    );
-}
-
-function MonthlyConsumptionTracker({ monthlyConsumption }) {
-    const { thisMonth, lastMonth } = monthlyConsumption;
-    
-    const difference = thisMonth - lastMonth;
-    const isHigher = difference > 0;
-    const isSame = difference === 0;
-    
-    let icon, comparisonText, color;
-
-    if (isSame) {
-        icon = 'remove-circle';
-        comparisonText = 'Same as last month.';
-        color = '#888';
-    } else if (isHigher) {
-        icon = 'arrow-up-circle';
-        comparisonText = `${difference} more than last month! Great job!`;
-        color = '#4CAF50';
-    } else {
-        icon = 'arrow-down-circle';
-        comparisonText = `${Math.abs(difference)} less than last month. Aim higher!`;
-        color = '#FFD700';
+  filtered.forEach((p) => {
+    const days = getExpirationDays(p.expirationDate);
+    if (days === null) return;
+    if (days >= 0 && days <= 7) {
+      counts['7 Days']++;
+    } else if (days > 7 && days <= 14) {
+      counts['14 Days']++;
+    } else if (days > 14 && days <= 30) {
+      counts['30 Days']++;
     }
+  });
 
-    return (
-        <View style={styles.chartContainer}>
-            <Text style={styles.chartTitle}>Monthly Purchase Rate 📈</Text>
-            <View style={styles.consumptionStats}>
-                <View style={styles.consumptionItem}>
-                    <Text style={styles.consumptionValue}>{thisMonth}</Text>
-                    <Text style={styles.consumptionLabel}>Purchased This Month</Text>
-                </View>
-                <View style={styles.consumptionDivider} />
-                 <View style={styles.consumptionItem}>
-                    <Text style={styles.consumptionValue}>{lastMonth}</Text>
-                    <Text style={styles.consumptionLabel}>Purchased Last Month</Text>
-                </View>
-            </View>
-            <View style={[styles.comparisonBar, { backgroundColor: color }]}>
-                <Ionicons name={icon} size={20} color="#000" style={{ marginRight: 8 }} />
-                <Text style={styles.comparisonText}>
-                    {isSame ? comparisonText : comparisonText}
-                </Text>
-            </View>
-        </View>
-    );
-}
-
-// NEW COMPONENT: Monthly Spending Tracker
-function MonthlySpendingTracker({ monthlySpending }) {
-    const [settingData, loadSettingData] = useState([]);
-    const thisMonth = parseFloat(monthlySpending.thisMonth) || 0;
-    const lastMonth = parseFloat(monthlySpending.lastMonth) || 0;
-    const diff = thisMonth - lastMonth;
-    const isHigher = diff > 0;
-    
-    let icon, comparisonText, color;
-  const CURRENCY_SYMBOLS = {
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  AZN: '₼', 
-
+  return [
+    { label: '0–7 Days', count: counts['7 Days'], color: '#FF6B6B' },
+    { label: '8–14 Days', count: counts['14 Days'], color: '#FFD700' },
+    { label: '15–30 Days', count: counts['30 Days'], color: '#4CAF50' },
+  ];
 };
 
+function ExpirationTimelineChart({ products }: { products: ProductItem[] }) {
+  const hasUpcoming = products.some((p) => {
+    if (p.toBuy || !p.expirationDate) return false;
+    const days = getExpirationDays(p.expirationDate);
+    return days !== null && days >= 0;
+  });
 
-const getCurrencySymbol = (code: string) => {
-  return CURRENCY_SYMBOLS[code] || code;
-};
-    if (diff === 0) {
-        icon = 'remove-circle';
-        comparisonText = 'Spending is the same as last month.';
-        color = '#888';
-    } else if (isHigher) {
-        icon = 'arrow-up-circle';
-        comparisonText = `Up $${diff.toFixed(2)} from last month.`;
-        color = '#FF6B6B'; // Red for higher spending
-    } else {
-        icon = 'arrow-down-circle';
-        comparisonText = `Down $${Math.abs(diff).toFixed(2)} from last month. Nice saving!`;
-        color = '#4CAF50'; // Green for lower spending
-    }
-    const formatCurrency = (amount) => {
-        const numericAmount = isFinite(amount) ? amount : 0;
-        return `${getCurrencySymbol(settingData.currency)}${numericAmount.toFixed(2)}`;
-    };
-    
-  const loadData = async () => {
+  if (!hasUpcoming) return null;
 
-      const settingData = await loadSetting();
-      loadSettingData(settingData);
-  
-    };
-    useFocusEffect(
-      useCallback(() => {
-        loadData();
-      }, [])
-    );
-    return (
-        <View style={[styles.chartContainer, { marginTop: 10 }]}>
-            <Text style={styles.chartTitle}>Monthly Spending 💰</Text>
-            <View style={styles.consumptionStats}>
-                <View style={styles.consumptionItem}>
-                    <Text style={[styles.consumptionValue, { color: '#00BCD4' }]}>
-                        {formatCurrency(thisMonth)}
-                    </Text>
-                    <Text style={styles.consumptionLabel}>Spent This Month</Text>
-                </View>
-                <View style={styles.consumptionDivider} />
-                 <View style={styles.consumptionItem}>
-                    <Text style={styles.consumptionValue}>
-                        {formatCurrency(lastMonth)}
-                    </Text>
-                    <Text style={styles.consumptionLabel}>Spent Last Month</Text>
-                </View>
+  const data = aggregateByExpiration(products);
+  const maxCount = Math.max(...data.map((item) => item.count), 1);
+
+  return (
+    <View style={styles.chartContainer}>
+      <View style={styles.chartHeaderRow}>
+        <Ionicons name="calendar-outline" size={18} color="#4CAF50" />
+        <Text style={styles.chartTitle}>Expiration Timeline</Text>
+      </View>
+      <View style={styles.barChartWrapper}>
+        {data.map((item, index) => (
+          <View key={index} style={styles.barContainer}>
+            <Text style={styles.barLabel}>{item.label}</Text>
+            <View style={styles.barTrack}>
+              <View
+                style={[
+                  styles.barFill,
+                  {
+                    width: `${(item.count / maxCount) * 100}%`,
+                    backgroundColor: item.color,
+                  },
+                ]}
+              />
             </View>
-            <View style={[styles.comparisonBar, { backgroundColor: color }]}>
-                <Ionicons name={icon} size={20} color="#000" style={{ marginRight: 9 }} />
-                <Text style={styles.comparisonText}>
-                    {comparisonText}
-                </Text>
-            </View>
-        </View>
-    );
+            <Text style={styles.barCount}>{item.count}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
 }
 
-function StatCard({ title, value, icon, color }) {
-    return (
-        <View style={[styles.statCard, { borderLeftColor: color }]}>
-            <Ionicons name={icon} size={28} color={color} />
-            <Text style={styles.statValue}>{value}</Text>
-            <Text style={styles.statTitle}>{title}</Text>
+function MonthlyConsumptionTracker({
+  monthlyConsumption,
+}: {
+  monthlyConsumption: { thisMonth: number; lastMonth: number };
+}) {
+  const { thisMonth, lastMonth } = monthlyConsumption;
+  const difference = thisMonth - lastMonth;
+  const isHigher = difference > 0;
+  const isSame = difference === 0;
+
+  let icon: keyof typeof Ionicons.glyphMap;
+  let comparisonText: string;
+  let accentColor: string;
+  let badgeBg: string;
+
+  if (isSame) {
+    icon = 'remove-circle-outline';
+    comparisonText = 'Same purchase count as last month.';
+    accentColor = '#999999';
+    badgeBg = 'rgba(255, 255, 255, 0.05)';
+  } else if (isHigher) {
+    icon = 'trending-up-outline';
+    comparisonText = `${difference} more item${difference === 1 ? '' : 's'} tracked than last month!`;
+    accentColor = '#4CAF50';
+    badgeBg = 'rgba(76, 175, 80, 0.12)';
+  } else {
+    icon = 'trending-down-outline';
+    comparisonText = `${Math.abs(difference)} fewer item${Math.abs(difference) === 1 ? '' : 's'} than last month.`;
+    accentColor = '#FFD700';
+    badgeBg = 'rgba(255, 215, 0, 0.12)';
+  }
+
+  return (
+    <View style={styles.chartContainer}>
+      <View style={styles.chartHeaderRow}>
+        <Ionicons name="stats-chart-outline" size={18} color="#4CAF50" />
+        <Text style={styles.chartTitle}>Monthly Purchase Rate</Text>
+      </View>
+      <View style={styles.consumptionStats}>
+        <View style={styles.consumptionItem}>
+          <Text style={styles.consumptionValue}>{thisMonth}</Text>
+          <Text style={styles.consumptionLabel}>This Month</Text>
         </View>
-    );
+        <View style={styles.consumptionDivider} />
+        <View style={styles.consumptionItem}>
+          <Text style={[styles.consumptionValue, { color: '#EAEAEA' }]}>{lastMonth}</Text>
+          <Text style={styles.consumptionLabel}>Last Month</Text>
+        </View>
+      </View>
+      <View style={[styles.comparisonBar, { backgroundColor: badgeBg, borderColor: accentColor + '40' }]}>
+        <Ionicons name={icon} size={18} color={accentColor} style={{ marginRight: 8 }} />
+        <Text style={[styles.comparisonText, { color: accentColor }]}>{comparisonText}</Text>
+      </View>
+    </View>
+  );
+}
+
+function MonthlySpendingTracker({
+  monthlySpending,
+  currency,
+}: {
+  monthlySpending: { thisMonth: number; lastMonth: number };
+  currency: string;
+}) {
+  const thisMonth = Number(monthlySpending.thisMonth) || 0;
+  const lastMonth = Number(monthlySpending.lastMonth) || 0;
+  const diff = thisMonth - lastMonth;
+  const isHigher = diff > 0;
+
+  let icon: keyof typeof Ionicons.glyphMap;
+  let comparisonText: string;
+  let accentColor: string;
+  let badgeBg: string;
+
+  if (diff === 0) {
+    icon = 'remove-circle-outline';
+    comparisonText = 'Spending is the same as last month.';
+    accentColor = '#999999';
+    badgeBg = 'rgba(255, 255, 255, 0.05)';
+  } else if (isHigher) {
+    icon = 'trending-up-outline';
+    comparisonText = `Up ${formatCurrency(diff, currency)} from last month.`;
+    accentColor = '#FF6B6B';
+    badgeBg = 'rgba(255, 107, 107, 0.12)';
+  } else {
+    icon = 'trending-down-outline';
+    comparisonText = `Down ${formatCurrency(Math.abs(diff), currency)} from last month. Nice saving!`;
+    accentColor = '#4CAF50';
+    badgeBg = 'rgba(76, 175, 80, 0.12)';
+  }
+
+  return (
+    <View style={styles.chartContainer}>
+      <View style={styles.chartHeaderRow}>
+        <Ionicons name="wallet-outline" size={18} color="#00BCD4" />
+        <Text style={styles.chartTitle}>Monthly Spending</Text>
+      </View>
+      <View style={styles.consumptionStats}>
+        <View style={styles.consumptionItem}>
+          <Text style={[styles.consumptionValue, { color: '#00BCD4' }]}>
+            {formatCurrency(thisMonth, currency)}
+          </Text>
+          <Text style={styles.consumptionLabel}>Spent This Month</Text>
+        </View>
+        <View style={styles.consumptionDivider} />
+        <View style={styles.consumptionItem}>
+          <Text style={[styles.consumptionValue, { color: '#EAEAEA' }]}>
+            {formatCurrency(lastMonth, currency)}
+          </Text>
+          <Text style={styles.consumptionLabel}>Spent Last Month</Text>
+        </View>
+      </View>
+      <View style={[styles.comparisonBar, { backgroundColor: badgeBg, borderColor: accentColor + '40' }]}>
+        <Ionicons name={icon} size={18} color={accentColor} style={{ marginRight: 8 }} />
+        <Text style={[styles.comparisonText, { color: accentColor }]}>{comparisonText}</Text>
+      </View>
+    </View>
+  );
+}
+
+function StatCard({
+  title,
+  value,
+  icon,
+  color,
+}: {
+  title: string;
+  value: number;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+}) {
+  return (
+    <View style={styles.statCard}>
+      <View style={styles.statCardTop}>
+        <View style={[styles.statIconWrap, { backgroundColor: color + '1A' }]}>
+          <Ionicons name={icon} size={20} color={color} />
+        </View>
+        <Text style={styles.statValue}>{value}</Text>
+      </View>
+      <Text style={styles.statTitle}>{title}</Text>
+    </View>
+  );
 }
 
 export default function DashboardScreen() {
-  const [products, setProducts] = useState([]);
-  const [monthlyConsumption, setMonthlyConsumption] = useState({ thisMonth: 0, lastMonth: 0 });
-  const [monthlySpending, setMonthlySpending] = useState({ thisMonth: 0, lastMonth: 0 }); // NEW STATE
-  const [stats, setStats] = useState({
-    total: 0,
-    toBuy: 0,
-    expiresSoon: 0,
-    inProgress: 0,
-  });
-const currentYear = new Date().getFullYear();
-  const animatedValue = new Animated.Value(0);
+  const { products, settings } = useAppContext();
+  const currentYear = new Date().getFullYear();
 
-  useEffect(() => {
-    loadData();
-    animateHeader();
-  }, []);
-
-  useFocusEffect(
-      useCallback(() => {
-        loadData();
-      }, [])
-    );
-  
-  
-  const loadData = async () => {
-    const data = await AsyncStorage.getItem('products_list');
-    const list = data ? JSON.parse(data) : [];
-    
-    const demoList = list.map((p, index) => ({
-      ...p,
-      price: p.price ||0, // Assign a dummy price
-      boughtDate: p.boughtDate || new Date().toISOString().split('T')[0], // Ensure a date
-    }));
-    
+  const { stats, monthlyConsumption, monthlySpending } = useMemo(() => {
     const now = new Date();
-    
-    const thisMonthProducts = demoList.filter(p => {
-        if (!p.boughtDate) return false;
-        if (p.inProgress) return false;
-        if (p.toBuy) return false;
-        const d = new Date(p.boughtDate);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    const lastMonthIdx = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    const lastMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+
+    const acquiredProducts = products.filter((p) => !p.toBuy && !p.inProgress && p.boughtDate);
+
+    const thisMonthProducts = acquiredProducts.filter((p) => {
+      const d = parseFormattedDate(p.boughtDate);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
 
-    const lastMonthProducts = demoList.filter(p => {
-        if (!p.boughtDate) return false;
-        if (p.inProgress) return false;
-        if (p.toBuy) return false;
-        const d = new Date(p.boughtDate);
-        const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-        const year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-        return d.getMonth() === lastMonth && d.getFullYear() === year;
+    const lastMonthProducts = acquiredProducts.filter((p) => {
+      const d = parseFormattedDate(p.boughtDate);
+      return d.getMonth() === lastMonthIdx && d.getFullYear() === lastMonthYear;
     });
 
-    const consumption =  { 
-        thisMonth: thisMonthProducts.length,
-        lastMonth: lastMonthProducts.length,
-    }; 
-    
+    const sumSpending = (list: ProductItem[]) =>
+      list.reduce((sum, p) => {
+        const cleanPrice = String(p.price ?? 0).replace(',', '.');
+        return sum + (parseFloat(cleanPrice) || 0);
+      }, 0);
 
- const calculateTotalSpending = (products) => {
-        
-        const acquiredProducts = products.filter(p => !p.toBuy && !p.inProgress);
-        
-        return acquiredProducts.reduce((sum, p) => {
-            const rawPrice = p.price || 0;
-            
-            const cleanPrice = String(rawPrice).replace(',', '.'); 
-            
-            return sum + (parseFloat(cleanPrice) || 0);
-        }, 0);
-    };
-
-    const spending = {
-        thisMonth: calculateTotalSpending(thisMonthProducts),
-        lastMonth: calculateTotalSpending(lastMonthProducts),
-    };
-
-    setProducts(demoList);
-    setMonthlyConsumption(consumption);
-    setMonthlySpending(spending); // SET NEW STATE
-    calculateStats(demoList);
-  };
-
-  const calculateStats = (list) => {
-    const total = list.length;
-    const toBuy = list.filter(p => p.toBuy).length;
-    const inProgress = list.filter(p => p.inProgress).length;
-    const expiresSoon = list.filter(p => {
-      if (!p.expirationDate) return false;
+    const total = products.length;
+    const toBuy = products.filter((p) => p.toBuy).length;
+    const inProgress = products.filter((p) => p.inProgress).length;
+    const expiresSoon = products.filter((p) => {
+      if (p.toBuy || !p.expirationDate) return false;
       const days = getExpirationDays(p.expirationDate);
-      return days >= 0 && days <= 5 && !p.toBuy;
+      return days !== null && days <= EXPIRES_SOON_DAYS;
     }).length;
 
-    setStats({ total, toBuy, expiresSoon, inProgress });
-  };
-
-  const animateHeader = () => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(animatedValue, { toValue: 1, duration: 1500, useNativeDriver: false }),
-        Animated.timing(animatedValue, { toValue: 0, duration: 1500, useNativeDriver: false }),
-      ])
-    ).start();
-  };
-const navigation = useNavigation();
-  const headerColor = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['#000', '#4CAF50']
-  });
+    return {
+      stats: { total, toBuy, expiresSoon, inProgress },
+      monthlyConsumption: {
+        thisMonth: thisMonthProducts.length,
+        lastMonth: lastMonthProducts.length,
+      },
+      monthlySpending: {
+        thisMonth: sumSpending(thisMonthProducts),
+        lastMonth: sumSpending(lastMonthProducts),
+      },
+    };
+  }, [products]);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 50 }}>
-      <Animated.View style={[styles.headerContainer, { backgroundColor: headerColor }]}>
-        <Text style={styles.headerTitle}>Food Dashboard</Text>
-        <Text style={styles.headerSubtitle}>Visualize your inventory</Text>
-      </Animated.View>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Clean Minimal Top Bar */}
+        <View style={styles.topBar}>
+          <BrandLogo size="md" />
+          <TouchableOpacity
+            style={styles.settingsIconBtn}
+            onPress={() => router.push('/pages/settings')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="settings-outline" size={20} color="#EAEAEA" />
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.statsContainer}>
-        <StatCard title="Total Foods" value={stats.total} icon="fast-food" color="#4CAF50" />
-        <StatCard title="To Buy" value={stats.toBuy} icon="cart" color="#00BCD4"  />
-        <StatCard title="Expires Soon" value={stats.expiresSoon} icon="time" color="#FF6B6B" />
-        <StatCard title="In Progress" value={stats.inProgress} icon="bicycle" color="#FFD700" />
-      </View>
-      
-      <MonthlySpendingTracker monthlySpending={monthlySpending} /> 
+        <View style={styles.heroSection}>
+          <Text style={styles.heroTitle}>Dashboard</Text>
+          <Text style={styles.heroSubtitle}>Track your inventory and reduce food waste</Text>
+        </View>
 
-      <MonthlyConsumptionTracker monthlyConsumption={monthlyConsumption} />
+        <View style={styles.statsContainer}>
+          <StatCard title="Total Foods" value={stats.total} icon="nutrition-outline" color="#4CAF50" />
+          <StatCard title="To Buy" value={stats.toBuy} icon="cart-outline" color="#00BCD4" />
+          <StatCard title="Expires Soon" value={stats.expiresSoon} icon="time-outline" color="#FF6B6B" />
+          <StatCard title="In Progress" value={stats.inProgress} icon="hourglass-outline" color="#FFD700" />
+        </View>
 
-      <ExpirationTimelineChart products={products} getExpirationDays={getExpirationDays} />
+        <MonthlySpendingTracker monthlySpending={monthlySpending} currency={settings.currency} />
 
+        <MonthlyConsumptionTracker monthlyConsumption={monthlyConsumption} />
+
+        <ExpirationTimelineChart products={products} />
+
+        {/* Dark Cohesive Footer */}
         <View style={styles.footerContainer}>
-    
-    <View style={styles.contentRow}>
-      
-      <View style={styles.logoSection}>
-        <Image
-          source={require("../../assets/images/footerLogo.png")}   
-          style={styles.logo}
-        />
-        <Text style={styles.copyrightText}>
-          © {currentYear} RePlate.
-        </Text>
-        <Text style={styles.copyrightText}>
-          All Rights Reserved.
-        </Text>
-      </View>
+          <View style={styles.footerTopRow}>
+            <View style={styles.logoSection}>
+              <BrandLogo size="sm" />
+              <Text style={styles.copyrightText}>© {currentYear} RePlate. All rights reserved.</Text>
+            </View>
+          </View>
 
-      <View style={styles.linkColumn}>
-        {/* <Text style={styles.columnTitle}>Company</Text> */}
-        <TouchableOpacity onPress={() => router.push('/pages/aboutus')}>
-          <Text style={styles.linkText}>About Us</Text>
-        </TouchableOpacity>
-        <TouchableOpacity  onPress={() => router.push('/pages/privacy')}>
-          <Text style={styles.linkText}>Privacy</Text>
-        </TouchableOpacity>
-        <TouchableOpacity  onPress={() => router.push('/pages/termsofservice')}>
-          <Text style={styles.linkText}>Terms of Service</Text>
-        </TouchableOpacity>
-      </View>
+          <View style={styles.footerDivider} />
 
-      <View style={styles.linkColumn}>
-        {/* <Text style={styles.columnTitle}>Support</Text> */}
-        <TouchableOpacity  onPress={() => router.push('/pages/howtouse')}>
-          <Text style={styles.linkText}>How to Use</Text>
-        </TouchableOpacity >
-        <TouchableOpacity onPress={() => router.push('/pages/settings')}>
-          <Text style={styles.linkText}>Settings</Text>
-        </TouchableOpacity>
-        <TouchableOpacity  onPress={() => router.push('/pages/contactus')}>
-          <Text style={styles.linkText}>Contact Us</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          <View style={styles.footerLinksGrid}>
+            <View style={styles.linkColumn}>
+              <Text style={styles.columnHeader}>Company</Text>
+              <TouchableOpacity onPress={() => router.push('/pages/aboutus')}>
+                <Text style={styles.linkText}>About Us</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/pages/privacy')}>
+                <Text style={styles.linkText}>Privacy Policy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/pages/termsofservice')}>
+                <Text style={styles.linkText}>Terms of Service</Text>
+              </TouchableOpacity>
+            </View>
 
-    <View style={styles.separator} />
-    
-  </View>
-      
-     
-     
-    </ScrollView>
+            <View style={styles.linkColumn}>
+              <Text style={styles.columnHeader}>Support</Text>
+              <TouchableOpacity onPress={() => router.push('/pages/howtouse')}>
+                <Text style={styles.linkText}>How to Use</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/pages/settings')}>
+                <Text style={styles.linkText}>Settings</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/pages/contactus')}>
+                <Text style={styles.linkText}>Contact Us</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000000ff' },
-  headerContainer: { padding: 15, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: '#fff' },
-  headerSubtitle: { fontSize: 16, color: '#ddd', marginTop: 6 },
-  
-  statsContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', marginTop: 20 },
-  statCard: { width: '45%', backgroundColor: '#1a1a1a', padding: 16, marginBottom: 12, borderRadius: 12, borderLeftWidth: 5, alignItems: 'center' },
-  statValue: { fontSize: 24, fontWeight: '700', color: '#fff', marginTop: 8 },
-  statTitle: { fontSize: 14, color: '#888', marginTop: 4 },
-  
-  consumptionStats: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      alignItems: 'center',
-      paddingVertical: 10,
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#000000',
   },
-  consumptionItem: {
-      alignItems: 'center',
-      flex: 1,
+  container: {
+    flex: 1,
+    backgroundColor: '#000000',
   },
-  consumptionValue: {
-      fontSize: 32,
-      fontWeight: '800',
-      color: '#4CAF50', 
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 36,
   },
-  consumptionLabel: {
-      fontSize: 13,
-      color: '#888',
-      marginTop: 4,
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
   },
-  consumptionDivider: {
-      width: 1,
-      height: '80%',
-      backgroundColor: '#333',
+  settingsIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#121212',
+    borderWidth: 1,
+    borderColor: '#1F1F1F',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  comparisonBar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 15,
-      borderRadius: 8,
-      marginTop: 10,
+  heroSection: {
+    marginTop: 6,
+    marginBottom: 18,
   },
-  comparisonText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: '#000',
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    color: '#888888',
+    marginTop: 4,
   },
 
-  chartContainer: { 
-      marginTop: 20, 
-      marginHorizontal: 16, 
-      backgroundColor: '#1a1a1a', 
-      padding: 15, 
-      borderRadius: 12 
+  statsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 8,
   },
-  chartTitle: { 
-      fontSize: 18, 
-      fontWeight: '700', 
-      color: '#fff', 
-      marginBottom: 15,
-      borderBottomWidth: 1,
-      borderBottomColor: '#333',
-      paddingBottom: 8,
+  statCard: {
+    width: '48%',
+    backgroundColor: '#111111',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1E1E1E',
   },
-  
-  barChartWrapper: { paddingVertical: 5 },
-  barContainer: { 
-      flexDirection: 'row', 
-      alignItems: 'center', 
-      marginBottom: 10 
+  statCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  barLabel: { 
-      width: 90, 
-      fontSize: 13, 
-      color: '#ddd', 
-      marginRight: 10 
+  statIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  barTrack: { 
-      flex: 1, 
-      height: 12, 
-      backgroundColor: '#333', 
-      borderRadius: 6, 
-      overflow: 'hidden' 
+  statValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
-  barFill: { 
-      height: '100%', 
-      borderRadius: 6,
+  statTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#888888',
   },
-  barCount: { 
-      width: 30, 
-      textAlign: 'right', 
-      fontSize: 14, 
-      fontWeight: '600', 
-      color: '#fff' 
+
+  chartContainer: {
+    marginTop: 14,
+    backgroundColor: '#111111',
+    padding: 18,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1E1E1E',
   },
-  settings_button: {
-      marginTop: 20,
-      marginHorizontal: 100,
+  chartHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E1E1E',
+  },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  consumptionStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  consumptionItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  consumptionValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#4CAF50',
+  },
+  consumptionLabel: {
+    fontSize: 12,
+    color: '#888888',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  consumptionDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#222222',
+  },
+  comparisonBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  comparisonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  barChartWrapper: { paddingVertical: 4 },
+  barContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  barLabel: {
+    width: 85,
+    fontSize: 13,
+    color: '#BBBBBB',
+    marginRight: 10,
+  },
+  barTrack: {
+    flex: 1,
+    height: 10,
+    backgroundColor: '#1E1E1E',
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  barCount: {
+    width: 30,
+    textAlign: 'right',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 
   footerContainer: {
-    backgroundColor: "#181818ee", 
-    paddingVertical: 25,
-    paddingHorizontal: 20,
-    borderTopWidth: 1, 
-    borderTopColor: "#333333",
-    marginTop: 70,
-    gap: 20,
+    backgroundColor: '#0B0B0B',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
+    marginTop: 28,
   },
-
-  contentRow: {
-    flexDirection: "row",
-    justifyContent: "space-around", 
-    alignItems: 'flex-start', 
-    marginBottom: 10,
+  footerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-
   logoSection: {
-    width: '38%', 
-    alignItems: 'flex-start',
+    gap: 6,
   },
-
-  logo: {
-    width: 130, 
-    height: 30, 
-    resizeMode: "center",
-    marginBottom: 20, 
-  },
-
   copyrightText: {
-    color: "#AAAAAA", 
+    color: '#666666',
     fontSize: 12,
+    marginTop: 2,
   },
-
-
+  footerDivider: {
+    height: 1,
+    backgroundColor: '#1A1A1A',
+    marginVertical: 16,
+  },
+  footerLinksGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
   linkColumn: {
-    width: '22%', 
-    alignItems: 'flex-start',
+    flex: 1,
+    gap: 8,
   },
-
-  columnTitle: {
-    color: "#FFFFFF", 
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 10,
+  columnHeader: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-
   linkText: {
-    color: "#4CAF50", 
+    color: '#999999',
     fontSize: 14,
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
-
-  separator: {
-    height: 2,
-    width: "100%",
-    backgroundColor: "#4CAF50",
-    marginTop: 10,
-  }
 });

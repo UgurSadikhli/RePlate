@@ -13,6 +13,7 @@ import {
   PanResponder,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { formatDate, parseFormattedDate } from '@/utils/date';
 
 const { height: SH } = Dimensions.get('window');
 
@@ -28,18 +29,6 @@ const MUTED    = '#555555';
 const DATE_KEYWORDS    = ['date', 'expiry', 'expiration', 'dob', 'birth', 'deadline', 'due', 'start', 'end'];
 const NUMERIC_KEYWORDS = ['price', 'amount', 'number', 'qty', 'quantity', 'cost', 'total', 'count', 'age', 'year'];
 
-/**
- * Helper: Converts "YYYY-MM-DD" string back to Date object.
- */
-const parseFormattedDate = (dateStr: string): Date => {
-  if (!dateStr) return new Date();
-  const parts = dateStr.split('-');
-  if (parts.length !== 3) return new Date();
-  // parts[0] = YYYY, parts[1] = MM, parts[2] = DD
-  const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-  return isNaN(d.getTime()) ? new Date() : d;
-};
-
 function resolveFieldType(
   field: string,
   overrides?: Record<string, 'date' | 'numeric' | 'text'>
@@ -47,6 +36,10 @@ function resolveFieldType(
   if (!field || typeof field !== 'string') return 'text';
   if (overrides?.[field]) return overrides[field];
   const lower = field.toLowerCase().trim();
+  // Exclude fields like "Quantity Type" from matching 'quantity' as numeric
+  if (lower.includes('type') || lower.includes('category') || lower.includes('unit')) {
+    return 'text';
+  }
   if (DATE_KEYWORDS.some((kw) => lower.includes(kw))) return 'date';
   if (NUMERIC_KEYWORDS.some((kw) => lower.includes(kw))) return 'numeric';
   return 'text';
@@ -68,18 +61,18 @@ const FillInMissingDetailsGap: React.FC<Props> = ({
   fieldTypes,
 }) => {
   const [values, setValues]             = useState<Record<string, string>>({});
-  const [index, setIndex]             = useState(0);
-  const [showPicker, setShowPicker]   = useState<string | null>(null);
+  const [index, setIndex]               = useState(0);
+  const [showPicker, setShowPicker]     = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const slideAnim   = useRef(new Animated.Value(SH)).current;
-  const dragY       = useRef(new Animated.Value(0)).current;
-  const cardScale   = useRef(new Animated.Value(1)).current;
+  const slideAnim    = useRef(new Animated.Value(SH)).current;
+  const dragY        = useRef(new Animated.Value(0)).current;
+  const cardScale    = useRef(new Animated.Value(1)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
 
-  const indexRef      = useRef(0);
-  const totalRef      = useRef(missingDetails.length);
-  const isDismissing  = useRef(false);
+  const indexRef     = useRef(0);
+  const totalRef     = useRef(missingDetails.length);
+  const isDismissing = useRef(false);
 
   useEffect(() => {
     totalRef.current = missingDetails.length;
@@ -89,7 +82,8 @@ const FillInMissingDetailsGap: React.FC<Props> = ({
     if (visible) {
       setValues({});
       setIndex(0);
-      indexRef.current  = 0;
+      setShowPicker(null);
+      indexRef.current     = 0;
       isDismissing.current = false;
       dragY.setValue(0);
       cardScale.setValue(1);
@@ -103,7 +97,7 @@ const FillInMissingDetailsGap: React.FC<Props> = ({
         mass: 0.8,
       }).start();
     }
-  }, [visible]);
+  }, [visible, cardScale, dragY, progressAnim, slideAnim]);
 
   const goTo = useCallback((next: number) => {
     const clamped = Math.max(0, Math.min(totalRef.current - 1, next));
@@ -116,7 +110,7 @@ const FillInMissingDetailsGap: React.FC<Props> = ({
       damping: 18,
       stiffness: 140,
     }).start();
-  }, []);
+  }, [progressAnim]);
 
   const dismiss = useCallback(() => {
     if (isDismissing.current) return;
@@ -126,20 +120,21 @@ const FillInMissingDetailsGap: React.FC<Props> = ({
       duration: 260,
       useNativeDriver: true,
     }).start(onClose);
-  }, [onClose]);
+  }, [onClose, slideAnim]);
+
+  const openDatePickerForField = (field: string) => {
+    // Ensure a default formatted date is populated when opening on iOS so tapping "Done" without scrolling works
+    if (Platform.OS === 'ios' && !values[field]) {
+      setValues((prev) => ({ ...prev, [field]: formatDate(new Date()) }));
+    }
+    setShowPicker(field);
+  };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') setShowPicker(null);
-    
+
     if (event.type === 'set' && selectedDate && showPicker) {
-      const d = selectedDate;
-      // Formatter: YYYY-MM-DD
-      const formatted = [
-        d.getFullYear(),
-        (d.getMonth() + 1).toString().padStart(2, '0'),
-        d.getDate().toString().padStart(2, '0'),
-      ].join('-');
-      
+      const formatted = formatDate(selectedDate);
       setValues((prev) => ({ ...prev, [showPicker]: formatted }));
     } else if (event.type === 'dismissed') {
       setShowPicker(null);
@@ -210,7 +205,7 @@ const FillInMissingDetailsGap: React.FC<Props> = ({
   const filledCount = missingDetails.filter(
     (d) => values[d] && values[d].trim() !== ''
   ).length;
-  const isComplete = filledCount === missingDetails.length;
+  const isComplete = missingDetails.length > 0 && filledCount === missingDetails.length;
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
@@ -224,215 +219,208 @@ const FillInMissingDetailsGap: React.FC<Props> = ({
   const fieldType    = resolveFieldType(currentField, fieldTypes);
 
   return (
-    <>
-      <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
-        <View style={s.root}>
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={dismiss}>
+      <View style={s.root}>
+        <Animated.View
+          style={[
+            s.backdrop,
+            {
+              opacity: dragY.interpolate({
+                inputRange: [0, SH * 0.4],
+                outputRange: [1, 0],
+                extrapolate: 'clamp',
+              }),
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={dismiss}
+          />
+        </Animated.View>
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={s.kav}
+          pointerEvents="box-none"
+        >
           <Animated.View
             style={[
-              s.backdrop,
+              s.sheet,
               {
-                opacity: dragY.interpolate({
-                  inputRange: [0, SH * 0.4],
-                  outputRange: [1, 0],
-                  extrapolate: 'clamp',
-                }),
+                transform: [
+                  { translateY: modalTranslate },
+                  { scale: cardScale },
+                ],
               },
             ]}
           >
-            <TouchableOpacity
-              style={StyleSheet.absoluteFillObject}
-              activeOpacity={1}
-              onPress={dismiss}
-            />
-          </Animated.View>
+            <View style={s.handleWrap} {...panResponder.panHandlers}>
+              <View style={s.handle} />
+            </View>
 
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={s.kav}
-            pointerEvents="box-none"
-          >
-            <Animated.View
-              style={[
-                s.sheet,
-                {
-                  transform: [
-                    { translateY: modalTranslate },
-                    { scale: cardScale },
-                  ],
-                },
-              ]}
-            >
-              <View style={s.handleWrap} {...panResponder.panHandlers}>
-                <View style={s.handle} />
-              </View>
-
-              <View style={s.header} {...panResponder.panHandlers}>
-                <View style={s.headerLeft}>
-                  <View style={s.iconRing}>
-                    <Text style={s.iconText}>✦</Text>
-                  </View>
-                  <View>
-                    <Text style={s.title}>Missing details</Text>
-                    <Text style={s.subtitle}>
-                      {filledCount} of {missingDetails.length} filled
-                    </Text>
-                  </View>
+            <View style={s.header} {...panResponder.panHandlers}>
+              <View style={s.headerLeft}>
+                <View style={s.iconRing}>
+                  <Text style={s.iconText}>✦</Text>
                 </View>
-                <TouchableOpacity style={s.closeBtn} onPress={dismiss}>
-                  <Text style={s.closeBtnText}>✕</Text>
+                <View>
+                  <Text style={s.title}>Missing details</Text>
+                  <Text style={s.subtitle}>
+                    {filledCount} of {missingDetails.length} filled
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity style={s.closeBtn} onPress={dismiss}>
+                <Text style={s.closeBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={s.progressTrack}>
+              <Animated.View style={[s.progressFill, { width: progressWidth }]} />
+            </View>
+
+            <View style={s.pills} {...swipeResponder.panHandlers}>
+              {missingDetails.map((field, i) => {
+                const done   = !!(values[field] && values[field].trim() !== '');
+                const active = i === index;
+                return (
+                  <TouchableOpacity
+                    key={`${field}-${i}`}
+                    style={[s.pill, active && s.pillActive, done && !active && s.pillDone]}
+                    onPress={() => goTo(i)}
+                  >
+                    <Text style={[s.pillNum, active && s.pillNumActive]}>
+                      {done && !active ? '✓' : i + 1}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={s.body} {...swipeResponder.panHandlers}>
+              <Text style={s.fieldLabel} numberOfLines={1}>{currentField}</Text>
+              <Text style={s.fieldHint}>
+                Step {index + 1} of {missingDetails.length}
+              </Text>
+
+              {fieldType === 'date' ? (
+                <TouchableOpacity
+                  style={[s.dateBtn, focusedField === currentField && s.inputWrapFocused]}
+                  onPress={() => openDatePickerForField(currentField)}
+                >
+                  <Text style={s.dateBtnLabel}>Tap to set: </Text>
+                  <Text style={s.dateBtnValue}>
+                    {isFilled ? fieldValue : 'YYYY-MM-DD'}
+                  </Text>
+                  {isFilled && (
+                    <View style={[s.checkMark, { marginLeft: 'auto' }]}>
+                      <Text style={s.checkMarkText}>✓</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
-              </View>
-
-              <View style={s.progressTrack}>
-                <Animated.View style={[s.progressFill, { width: progressWidth }]} />
-              </View>
-
-              <View style={s.pills} {...swipeResponder.panHandlers}>
-                {missingDetails.map((field, i) => {
-                  const done   = !!(values[field] && values[field].trim() !== '');
-                  const active = i === index;
-                  return (
-                    <TouchableOpacity
-                      key={`${field}-${i}`}
-                      style={[s.pill, active && s.pillActive, done && !active && s.pillDone]}
-                      onPress={() => goTo(i)}
-                    >
-                      <Text style={[s.pillNum, active && s.pillNumActive]}>
-                        {done && !active ? '✓' : i + 1}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              <View style={s.body} {...swipeResponder.panHandlers}>
-                <Text style={s.fieldLabel} numberOfLines={1}>{currentField}</Text>
-                <Text style={s.fieldHint}>
-                  Step {index + 1} of {missingDetails.length}
-                </Text>
-
-                {fieldType === 'date' ? (
-                  <TouchableOpacity
-                    style={[s.dateBtn, focusedField === currentField && s.inputWrapFocused]}
-                    onPress={() => setShowPicker(currentField)}
-                  >
-                    <Text style={s.dateBtnLabel}>Tap to set: </Text>
-                    <Text style={s.dateBtnValue}>
-                      {isFilled ? fieldValue : 'YYYY-MM-DD'}
-                    </Text>
-                    {isFilled && (
-                      <View style={[s.checkMark, { marginLeft: 'auto' }]}>
-                        <Text style={s.checkMarkText}>✓</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ) : (
-                  <View style={[s.inputWrap, focusedField === currentField && s.inputWrapFocused]}>
-                    <TextInput
-                      style={s.input}
-                      value={fieldValue}
-                      placeholder={`Enter ${currentField.toLowerCase()}...`}
-                      placeholderTextColor={MUTED}
-                      keyboardType={fieldType === 'numeric' ? 'numeric' : 'default'}
-                      keyboardAppearance="dark"
-                      onFocus={() => setFocusedField(currentField)}
-                      onBlur={() => setFocusedField(null)}
-                      onChangeText={(t) => setValues((prev) => ({ ...prev, [currentField]: t }))}
-                      onSubmitEditing={() => index < missingDetails.length - 1 && goTo(index + 1)}
-                    />
-                    {isFilled && (
-                      <View style={s.checkMark}>
-                        <Text style={s.checkMarkText}>✓</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                <View style={s.navRow}>
-                  <TouchableOpacity
-                    style={[s.navBtn, index === 0 && s.navBtnDisabled]}
-                    onPress={() => goTo(index - 1)}
-                    disabled={index === 0}
-                  >
-                    <Text style={s.navBtnText}>← Previous</Text>
-                  </TouchableOpacity>
-
-                  {index < missingDetails.length - 1 ? (
-                    <TouchableOpacity
-                      style={[s.navBtnNext, isFilled && s.navBtnNextActive]}
-                      onPress={() => goTo(index + 1)}
-                    >
-                      <Text style={[s.navBtnNextText, isFilled && s.navBtnNextTextActive]}>Next →</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <Text style={[s.lastHintText, isComplete && s.lastHintDone]}>
-                      {isComplete ? 'Ready to save ✓' : 'Finish all fields'}
-                    </Text>
+              ) : (
+                <View style={[s.inputWrap, focusedField === currentField && s.inputWrapFocused]}>
+                  <TextInput
+                    style={s.input}
+                    value={fieldValue}
+                    placeholder={`Enter ${currentField.toLowerCase()}...`}
+                    placeholderTextColor={MUTED}
+                    keyboardType={fieldType === 'numeric' ? 'decimal-pad' : 'default'}
+                    keyboardAppearance="dark"
+                    onFocus={() => setFocusedField(currentField)}
+                    onBlur={() => setFocusedField(null)}
+                    onChangeText={(t) => setValues((prev) => ({ ...prev, [currentField]: t }))}
+                    onSubmitEditing={() => index < missingDetails.length - 1 && goTo(index + 1)}
+                  />
+                  {isFilled && (
+                    <View style={s.checkMark}>
+                      <Text style={s.checkMarkText}>✓</Text>
+                    </View>
                   )}
                 </View>
-              </View>
+              )}
 
-              <View style={s.footer}>
-                <TouchableOpacity style={s.cancelBtn} onPress={dismiss}>
-                  <Text style={s.cancelText}>Cancel</Text>
-                </TouchableOpacity>
+              <View style={s.navRow}>
                 <TouchableOpacity
-                  style={[s.submitBtn, !isComplete && s.submitBtnDisabled]}
-                  onPress={() => isComplete && onSubmit(values)}
-                  disabled={!isComplete}
+                  style={[s.navBtn, index === 0 && s.navBtnDisabled]}
+                  onPress={() => goTo(index - 1)}
+                  disabled={index === 0}
                 >
-                  <Text style={s.submitText}>Confirm Details</Text>
+                  <Text style={s.navBtnText}>← Previous</Text>
+                </TouchableOpacity>
+
+                {index < missingDetails.length - 1 ? (
+                  <TouchableOpacity
+                    style={[s.navBtnNext, isFilled && s.navBtnNextActive]}
+                    onPress={() => goTo(index + 1)}
+                  >
+                    <Text style={[s.navBtnNextText, isFilled && s.navBtnNextTextActive]}>Next →</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={[s.lastHintText, isComplete && s.lastHintDone]}>
+                    {isComplete ? 'Ready to save ✓' : 'Finish all fields'}
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <View style={s.footer}>
+              <TouchableOpacity style={s.cancelBtn} onPress={dismiss}>
+                <Text style={s.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.submitBtn, !isComplete && s.submitBtnDisabled]}
+                onPress={() => isComplete && onSubmit(values)}
+                disabled={!isComplete}
+              >
+                <Text style={s.submitText}>Confirm Details</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </KeyboardAvoidingView>
+
+        {/* Date Picker Overlay (iOS in-modal overlay / Android native dialog) */}
+        {Platform.OS === 'ios' ? (
+          showPicker && (
+            <View style={s.pickerOverlay}>
+              <View style={s.pickerCard}>
+                <Text style={s.pickerTitle}>{showPicker}</Text>
+                <View style={s.pickerDivider} />
+                <DateTimePicker
+                  value={parseFormattedDate(values[showPicker])}
+                  mode="date"
+                  display="spinner"
+                  themeVariant="dark"
+                  textColor="#ffffff"
+                  onChange={onDateChange}
+                  style={s.picker}
+                />
+                <TouchableOpacity style={s.pickerConfirmBtn} onPress={() => setShowPicker(null)}>
+                  <Text style={s.pickerConfirmText}>Done</Text>
                 </TouchableOpacity>
               </View>
-            </Animated.View>
-          </KeyboardAvoidingView>
-
-          {/* Date Picker Overlay (IOS) / Trigger (Android) */}
-          {Platform.OS === 'ios' ? (
-            <Modal
-              visible={!!showPicker}
-              transparent
-              animationType="fade"
-              onRequestClose={() => setShowPicker(null)}
-            >
-              <View style={s.pickerOverlay}>
-                <View style={s.pickerCard}>
-                  <Text style={s.pickerTitle}>{showPicker}</Text>
-                  <View style={s.pickerDivider} />
-                  <DateTimePicker
-                    value={showPicker ? parseFormattedDate(values[showPicker]) : new Date()}
-                    mode="date"
-                    display="spinner"
-                    themeVariant="dark"
-                    textColor="#ffffff"
-                    onChange={onDateChange}
-                    style={s.picker}
-                  />
-                  <TouchableOpacity style={s.pickerConfirmBtn} onPress={() => setShowPicker(null)}>
-                    <Text style={s.pickerConfirmText}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </Modal>
-          ) : (
-            showPicker && (
-              <DateTimePicker
-                value={parseFormattedDate(values[showPicker])}
-                mode="date"
-                display="default"
-                onChange={onDateChange}
-              />
-            )
-          )}
-        </View>
-      </Modal>
-    </>
+            </View>
+          )
+        ) : (
+          showPicker && (
+            <DateTimePicker
+              value={parseFormattedDate(values[showPicker])}
+              mode="date"
+              display="default"
+              onChange={onDateChange}
+            />
+          )
+        )}
+      </View>
+    </Modal>
   );
 };
 
 const s = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.8)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.8)' },
   kav: { width: '100%' },
   sheet: {
     backgroundColor: SURFACE,
@@ -487,7 +475,7 @@ const s = StyleSheet.create({
   submitBtn: { flex: 2, height: 56, borderRadius: 16, backgroundColor: G, alignItems: 'center', justifyContent: 'center' },
   submitBtnDisabled: { backgroundColor: G_DIM, opacity: 0.5 },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', padding: 20 },
+  pickerOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', padding: 20, zIndex: 10 },
   pickerCard: { backgroundColor: '#000', borderRadius: 24, borderWidth: 1, borderColor: '#222', overflow: 'hidden' },
   pickerTitle: { color: '#fff', fontSize: 18, fontWeight: '700', textAlign: 'center', padding: 20, textTransform: 'capitalize' },
   pickerDivider: { height: 1, backgroundColor: '#111' },

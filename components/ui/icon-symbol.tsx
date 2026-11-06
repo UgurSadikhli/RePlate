@@ -1,5 +1,20 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { OpaqueColorValue, StyleProp, TextStyle } from 'react-native';
+import { SymbolWeight } from 'expo-symbols';
+import React from 'react';
+import { ColorValue, OpaqueColorValue, StyleProp, TextStyle } from 'react-native';
+
+const MAPPING: Record<string, React.ComponentProps<typeof MaterialIcons>['name']> = {
+  'house.fill': 'home',
+  'paperplane.fill': 'send',
+  'list.bullet': 'format-list-bulleted',
+  'plus.circle.fill': 'add-circle',
+  'diamond.fill': 'add-box',
+  'book.fill': 'menu-book',
+  'barcode': 'qr-code-scanner',
+  'barcode.viewfinder': 'qr-code-scanner',
+  'chevron.left.forwardslash.chevron.right': 'code',
+  'chevron.right': 'chevron-right',
+};
 
 export function IconSymbol({
   name,
@@ -7,10 +22,12 @@ export function IconSymbol({
   color,
   style,
 }: {
-  name: string; 
+  name: string;
   size?: number;
-  color: string | OpaqueColorValue;
+  color: string | OpaqueColorValue | ColorValue;
   style?: StyleProp<TextStyle>;
+  weight?: SymbolWeight;
 }) {
-  return <MaterialIcons name={name} size={size} color={color} style={style} />;
+  const mappedName = MAPPING[name] ?? (name as React.ComponentProps<typeof MaterialIcons>['name']);
+  return <MaterialIcons color={color as string} size={size} name={mappedName} style={style} />;
 }

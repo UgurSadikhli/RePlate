@@ -6,7 +6,7 @@ import {
   ScrollView, 
   SafeAreaView, 
 } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons'; 
+import { Ionicons } from '@expo/vector-icons'; 
 
 // Current date for versioning
 const EFFECTIVE_DATE = "December 8, 2025";
@@ -25,7 +25,7 @@ const TermsOfService: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🤝 Acceptance of Terms</Text>
           <Text style={styles.bodyText}>
-            By accessing or using the Replate mobile application (the "Service"), you agree to be bound by these Terms of Service. If you disagree with any part of the terms, then you may not access the Service. These terms govern your use of the Service provided by {COMPANY_NAME}.
+            By accessing or using the Replate mobile application (the &quot;Service&quot;), you agree to be bound by these Terms of Service. If you disagree with any part of the terms, then you may not access the Service. These terms govern your use of the Service provided by {COMPANY_NAME}.
           </Text>
         </View>
 
@@ -34,7 +34,7 @@ const TermsOfService: React.FC = () => {
           <Text style={styles.sectionTitle}>Account and Usage Rules</Text>
           
           <View style={styles.detailCard}>
-            <Text style={styles.detailTitle}><Ionicons name="license-outline" size={16} color="#FFFFFF" /> License to Use</Text>
+            <Text style={styles.detailTitle}><Ionicons name="document-text-outline" size={16} color="#FFFFFF" /> License to Use</Text>
             <Text style={styles.detailBody}>
               {COMPANY_NAME} grants you a limited, non-exclusive, non-transferable, revocable license to use the Service solely for personal, non-commercial purposes in accordance with these Terms.
             </Text>
@@ -69,7 +69,7 @@ const TermsOfService: React.FC = () => {
           <View style={styles.detailCard}>
             <Text style={styles.detailTitle}><Ionicons name="alert-circle-outline" size={16} color="#FFFFFF" /> Disclaimer of Warranty</Text>
             <Text style={styles.detailBody}>
-              The Service is provided on an "AS IS" and "AS AVAILABLE" basis. {COMPANY_NAME} makes no warranties, expressed or implied, that the Service will be uninterrupted, secure, or free from errors or viruses.
+              The Service is provided on an &quot;AS IS&quot; and &quot;AS AVAILABLE&quot; basis. {COMPANY_NAME} makes no warranties, expressed or implied, that the Service will be uninterrupted, secure, or free from errors or viruses.
             </Text>
           </View>
           
@@ -84,7 +84,7 @@ const TermsOfService: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Changes to Terms</Text>
           <Text style={styles.bodyText}>
-            We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days' notice prior to any new terms taking effect. By continuing to access or use our Service after those revisions become effective, you agree to be bound by the revised terms.
+            We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days&apos; notice prior to any new terms taking effect. By continuing to access or use our Service after those revisions become effective, you agree to be bound by the revised terms.
           </Text>
         </View>
         

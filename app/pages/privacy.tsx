@@ -5,9 +5,7 @@ import {
   StyleSheet, 
   ScrollView, 
   SafeAreaView, 
-  TouchableOpacity 
-} from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons'; 
+} from 'react-native'; 
 
 // Current date for versioning (Good practice)
 const LAST_UPDATED = "December 8, 2025";
@@ -43,14 +41,14 @@ const PrivacyPolicy: React.FC = () => {
           <View style={styles.detailCard}>
             <Text style={styles.detailTitle}>Inventory Data</Text>
             <Text style={styles.detailBody}>
-              Information about your food items (type, quantity, expiration date, price) is stored securely in your device. This data is **anonymized** and used solely to power the AI meal recommendations, track waste reduction goals, and provide personalized alerts.
+              Information about your food items (type, quantity, expiration date, price) is stored securely in your device. This data is <Text style={{ fontWeight: '700' }}>anonymized</Text> and used solely to power the AI meal recommendations, track waste reduction goals, and provide personalized alerts.
             </Text>
           </View>
           
           <View style={styles.detailCard}>
             <Text style={styles.detailTitle}>Usage Data</Text>
             <Text style={styles.detailBody}>
-              We track basic app usage (e.g., screens visited, features used) to improve the app's performance and user experience. This data is aggregated and does not identify you personally.
+              We track basic app usage (e.g., screens visited, features used) to improve the app&apos;s performance and user experience. This data is aggregated and does not identify you personally.
             </Text>
           </View>
         </View>

@@ -4,11 +4,9 @@ import {
   Text, 
   StyleSheet, 
   ScrollView, 
-  Image, 
-  TouchableOpacity,
   SafeAreaView 
 } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons'; 
+import { Ionicons } from '@expo/vector-icons'; 
 
 
 const TEAM_MEMBERS = [
