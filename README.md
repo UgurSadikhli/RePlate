@@ -29,7 +29,7 @@ In a world where food waste is a major global issue, NutriGuard AI empowers user
 Experience the app instantly by scanning the QR code below or using the Expo Go link.
 
 ### Expo Go URL
-[Open RePlate on Expo](https://expo.dev/preview/update?message=fill+in+the+missing+gap+component+added%2C+it+initialisez+the+data+of+product+before+turning+it+to+DONE+state&updateRuntimeVersion=1.0.0&createdAt=2026-05-08T22%3A35%3A14.806Z&slug=exp&projectId=121633b5-92ad-4e89-9d0c-2bec5f994bf0&group=303a1b48-952d-4da1-a45c-0a8787a7d6ce](https://expo.dev/preview/update?message=Updated+UI+and+Groq+AI&updateRuntimeVersion=1.0.0&createdAt=2026-11-06T01%3A56%3A59.931Z&slug=exp&projectId=121633b5-92ad-4e89-9d0c-2bec5f994bf0&group=7eac9014-fe02-42ef-8dcb-e2f72146dfc3))<img width="202" 
+[Open RePlate on Expo](https://expo.dev/preview/update?message=fill+in+the+missing+gap+component+added%2C+it+initialisez+the+data+of+product+before+turning+it+to+DONE+state&updateRuntimeVersion=1.0.0&createdAt=2026-05-08T22%3A35%3A14.806Z&slug=exp&projectId=121633b5-92ad-4e89-9d0c-2bec5f994bf0&group=303a1b48-952d-4da1-a45c-0a8787a7d6ce](https://expo.dev/preview/update?message=Updated+UI+and+Groq+AI&updateRuntimeVersion=1.0.0&createdAt=2026-11-06T01%3A56%3A59.931Z&slug=exp&projectId=121633b5-92ad-4e89-9d0c-2bec5f994bf0&group=7eac9014-fe02-42ef-8dcb-e2f72146dfc3))
 
 
 ### Scan to Preview
