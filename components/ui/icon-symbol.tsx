@@ -14,6 +14,12 @@ const MAPPING: Record<string, React.ComponentProps<typeof MaterialIcons>['name']
   'barcode.viewfinder': 'qr-code-scanner',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  'sparkles': 'auto-awesome',
+  'camera.fill': 'photo-camera',
+  'photo.fill': 'photo-library',
+  'calendar': 'calendar-today',
+  'pencil': 'edit',
+  'trash': 'delete',
 };
 
 export function IconSymbol({
