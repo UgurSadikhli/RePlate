@@ -601,6 +601,7 @@ export const scanFoodImageWithGroq = async (
     );
   }
 
+  const cleanBase64 = base64Image.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '').trim();
   const candidateModels = await getCandidateGroqModels(PREFERRED_VISION_MODELS, true);
 
   const prompt = `Analyze this image of food/groceries and return ONLY a raw JSON object (no markdown, no explanation) with an "items" array in this exact format:
@@ -610,7 +611,7 @@ export const scanFoodImageWithGroq = async (
       "name": "Apple",
       "quantity_estimate": "3",
       "quantity_estimate_type": "pcs",
-      "item_category": "fruit",
+      "item_category": "Produce",
       "confidence_score": 0.95
     }
   ]
@@ -619,42 +620,50 @@ export const scanFoodImageWithGroq = async (
   let lastError = '';
 
   for (const model of candidateModels.slice(0, 5)) {
-    const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${GROQ_API_KEY.trim()}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:image/jpeg;base64,${base64Image}`,
+    try {
+      const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${GROQ_API_KEY.trim()}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: prompt },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:image/jpeg;base64,${cleanBase64}`,
+                  },
                 },
-              },
-            ],
-          },
-        ],
-        temperature: 0.2,
-      }),
-    });
+              ],
+            },
+          ],
+          temperature: 0.2,
+        }),
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      lastError = `Groq Vision API error (${response.status}) [model: ${model}]: ${errorText}`;
+      if (!response.ok) {
+        const errorText = await response.text();
+        lastError = `Groq Vision API error (${response.status}) [model: ${model}]: ${errorText}`;
+        continue;
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '{"items":[]}';
+      const parsed = extractJsonObject(content);
+      const list = Array.isArray(parsed)
+        ? parsed
+        : parsed.items || parsed.food_items || parsed.products || [];
+      return Array.isArray(list) ? list : [];
+    } catch (err: any) {
+      lastError = err?.message || String(err);
       continue;
     }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '{"items":[]}';
-    const parsed = extractJsonObject(content);
-    return Array.isArray(parsed) ? parsed : parsed.items || [];
   }
 
   cachedAvailableModels = null;
