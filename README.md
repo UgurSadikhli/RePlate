@@ -17,13 +17,17 @@ In a world where food waste is a major global issue, NutriGuard AI empowers user
 
 <br/>
 
+
+
 ## `Images`
 
 | | | |
 | :---: | :---: | :---: |
-| <img src="https://github.com/user-attachments/assets/d7163a06-2dfe-4eab-b9d2-68c672c7b154" width="280" alt="Home Screen" /> | <img src="https://github.com/user-attachments/assets/b14bb7bf-78c2-4360-87f4-8585602f7b66" width="280" alt="Inventory List" /> | <img src="https://github.com/user-attachments/assets/61b6f895-4607-4487-a9d6-cd8751eb878f" width="280" alt="AI Suggestions" /> |
-| <img src="https://github.com/user-attachments/assets/437d2785-170b-4654-a6d4-63bbf151895c" width="280" alt="Food Details" /> | <img src="https://github.com/user-attachments/assets/5a34cf7a-6a20-44bd-afb3-b2122379e066" width="280" alt="Health Metrics" /> | <img src="https://github.com/user-attachments/assets/2e5ad6c6-4ae9-4c46-9242-942fd1b6f284" width="280" alt="Expiration Alerts" /> |
-| <img src="https://github.com/user-attachments/assets/c01e9d8e-1277-4fc4-b57d-6544769351d7" width="280" alt="Settings" /> | <img src="https://github.com/user-attachments/assets/1d06bbfb-23a8-4268-bf61-0bf76ffa471e" width="280" alt="Recipe View" /> | <img src="https://github.com/user-attachments/assets/9221aa16-799a-47c9-9389-e96a8ad61c57" width="280" alt="AI Chat" /> |
+| <img src="https://github.com/user-attachments/assets/d28fd87f-266f-44c2-8478-d009b0ff37c9" width="280" alt="1" /> | <img src="https://github.com/user-attachments/assets/c37005cc-4c65-4936-abc9-4e5dd5bed39d" width="280" alt="2" /> | <img src="https://github.com/user-attachments/assets/02bf4fbc-d5cc-4690-9504-a59bd81b9aa6" width="280" alt="3" /> |
+| <img src="https://github.com/user-attachments/assets/48ca555c-3e51-42e4-990e-b57d0d7f2ec1" width="280" alt="4" /> | <img src="https://github.com/user-attachments/assets/0785e2ee-68fb-4dfe-b12d-47cfa04f3107" width="280" alt="5" /> | <img src="https://github.com/user-attachments/assets/ea3570a8-4e11-42dc-85c2-0e35a1545fb2" width="280" alt="6" /> |
+| <img src="https://github.com/user-attachments/assets/274fd5a7-eec2-4c8c-b159-a6492e627dc4" width="280" alt="7" /> | <img src="https://github.com/user-attachments/assets/9e8426c4-c8d6-44ef-b488-5cd87b95415c" width="280" alt="8" /> | <img src="https://github.com/user-attachments/assets/a4dfbf51-8de6-43bd-8fa0-f8e0355aa968" width="280" alt="9" /> |
+| <img src="https://github.com/user-attachments/assets/38030010-afb3-4137-8003-7dff45f5af5a" width="280" alt="10" /> | <img src="https://github.com/user-attachments/assets/6c858dd0-f674-4f54-a6a8-289d8f118a04" width="280" alt="11" /> | <img src="https://github.com/user-attachments/assets/d0eba167-24da-45a7-8c0a-2beed50b33bb" width="280" alt="12" /> |
+| <img src="https://github.com/user-attachments/assets/5cb14192-1b9c-4974-8143-7536b181e626" width="280" alt="13" /> | <img width="280" alt="Снимок экрана 2026—11—09 в 12 17 19 PM" src="https://github.com/user-attachments/assets/fb60ff75-ce97-4607-8290-9a4b332e2bd5" /> | <img width="280"  alt="Снимок экрана 2026—11—09 в 12 17 39 PM" src="https://github.com/user-attachments/assets/cba5d2a9-10c0-422a-a870-51b59d26858d" /> |
 ## Try it on Expo
 
 Experience the app instantly by scanning the QR code below or using the Expo Go link.
@@ -46,6 +50,9 @@ Follow these steps to get the development environment set up on your local machi
 ### `npm install`
 This installs all the `node_modules` which are essential to run the project.
 
+###   `cp .env.example .env`
+Then change the Groq API KEY with your valid one. 
+
 ### `npm start / npm run dev`
 Runs the app in the development mode.
 Open [http://localhost:3000](http://localhost:3000) to view the bundler in your browser (or use the Expo CLI in your terminal).
@@ -67,7 +74,7 @@ Your app is ready to be deployed!
 
 ## 🧠 Technology Stack
 - **Frontend:** React Native (Expo)
-- **AI Engine:** Integrated LLM / Food Analysis API
+- **AI Engine:** Groq AI / Food Analysis API
 - **State Management:** Context API / Redux
 - **Styling:** Styled Components / NativeWind
 
