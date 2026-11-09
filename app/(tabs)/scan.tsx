@@ -40,34 +40,24 @@ export default function ScanScreen() {
   const extractImageAndBase64 = async (
     asset: ImagePicker.ImagePickerAsset
   ): Promise<{ uri: string; base64: string }> => {
-    // Prefer the base64 directly returned by expo-image-picker (reliable in Expo Go)
-    if (asset.base64 && asset.base64.length > 0) {
-      try {
-        const manipResult = await ImageManipulator.manipulateAsync(
-          asset.uri,
-          [{ resize: { width: 800 } }],
-          { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
-        );
-        if (manipResult.base64) {
-          return { uri: manipResult.uri, base64: manipResult.base64 };
-        }
-      } catch {
-        // Fallback to ImagePicker's native base64 if ImageManipulator fails in Expo Go
+    try {
+      const manipResult = await ImageManipulator.manipulateAsync(
+        asset.uri,
+        [{ resize: { width: 640 } }],
+        { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+      if (manipResult.base64) {
+        return { uri: manipResult.uri, base64: manipResult.base64 };
       }
+    } catch {
+      // Fallback to ImagePicker's native base64 if ImageManipulator fails in Expo Go
+    }
+
+    if (asset.base64 && asset.base64.length > 0) {
       return { uri: asset.uri, base64: asset.base64 };
     }
 
-    const manipResult = await ImageManipulator.manipulateAsync(
-      asset.uri,
-      [{ resize: { width: 800 } }],
-      { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
-    );
-
-    if (!manipResult.base64) {
-      throw new Error('Could not encode image to base64.');
-    }
-
-    return { uri: manipResult.uri, base64: manipResult.base64 };
+    throw new Error('Could not encode image to base64.');
   };
 
   const runScan = async (b64: string) => {
@@ -113,7 +103,7 @@ export default function ScanScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
-        quality: 0.5,
+        quality: 0.3,
         base64: true,
       });
 
@@ -145,7 +135,7 @@ export default function ScanScreen() {
 
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
-        quality: 0.5,
+        quality: 0.3,
         base64: true,
       });
 

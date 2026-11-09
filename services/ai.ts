@@ -374,15 +374,15 @@ export function formatIngredientsForPrompt(eligibleProducts: ProductItem[]): str
 }
 
 const PREFERRED_TEXT_MODELS = [
-  'qwen/qwen3.8-27b',
-  'qwen/qwen3.6-27b',
   'openai/gpt-oss-120b',
   'openai/gpt-oss-20b',
   'qwen/qwen3-32b',
-  'meta-llama/llama-4-scout-17b-16e-instruct',
-  'meta-llama/llama-4-maverick-17b-128e-instruct',
   'llama-3.3-70b-versatile',
   'llama-3.1-8b-instant',
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'meta-llama/llama-4-maverick-17b-128e-instruct',
+  'qwen/qwen3.8-27b',
+  'qwen/qwen3.6-27b',
 ];
 
 const PREFERRED_VISION_MODELS = [
@@ -471,6 +471,8 @@ async function getCandidateGroqModels(preferredList: string[], isVision = false)
           result.push(id);
         }
       }
+      // Never append text-only models (like allam-2-7b) for vision requests
+      return result.length > 0 ? result : preferredList;
     }
 
     for (const id of chatModels) {
@@ -619,50 +621,62 @@ export const scanFoodImageWithGroq = async (
 
   let lastError = '';
 
-  for (const model of candidateModels.slice(0, 5)) {
-    try {
-      const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${GROQ_API_KEY.trim()}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: prompt },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:image/jpeg;base64,${cleanBase64}`,
+  for (const model of candidateModels.slice(0, 3)) {
+    const isQwen = model.toLowerCase().includes('qwen');
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${GROQ_API_KEY.trim()}`,
+          },
+          body: JSON.stringify({
+            model,
+            ...(isQwen ? { reasoning_effort: 'none' } : {}),
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: prompt },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: `data:image/jpeg;base64,${cleanBase64}`,
+                    },
                   },
-                },
-              ],
-            },
-          ],
-          temperature: 0.2,
-        }),
-      });
+                ],
+              },
+            ],
+            temperature: 0.2,
+          }),
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        lastError = `Groq Vision API error (${response.status}) [model: ${model}]: ${errorText}`;
-        continue;
+        if (!response.ok) {
+          const errorText = await response.text();
+          lastError = `Groq Vision API error (${response.status}) [model: ${model}]: ${errorText}`;
+          if ((response.status === 429 || response.status >= 500) && attempt === 0) {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            continue;
+          }
+          break;
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || '{"items":[]}';
+        const parsed = extractJsonObject(content);
+        const list = Array.isArray(parsed)
+          ? parsed
+          : parsed.items || parsed.food_items || parsed.products || [];
+        return Array.isArray(list) ? list : [];
+      } catch (err: any) {
+        lastError = err?.message || String(err);
+        if (attempt === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          continue;
+        }
       }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || '{"items":[]}';
-      const parsed = extractJsonObject(content);
-      const list = Array.isArray(parsed)
-        ? parsed
-        : parsed.items || parsed.food_items || parsed.products || [];
-      return Array.isArray(list) ? list : [];
-    } catch (err: any) {
-      lastError = err?.message || String(err);
-      continue;
     }
   }
 
